@@ -261,7 +261,7 @@ export default function DutyPharmacies() {
       ) : display === "map" ? (
         <PharmacyMap markers={mapMarkers} userLocation={userLocation} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           {rows.map(({ pharmacy, distanceKm, inStockCount, matchingMedicines }) => {
             const isFav = favoritePharmacyIds.includes(pharmacy.id);
             const isExpanded = expandedIds.includes(pharmacy.id);

@@ -1157,7 +1157,7 @@ export default function Search({
               ) : display === "map" ? (
                 <PharmacyMap markers={nearbyMapMarkers} userLocation={userLocation} />
               ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid items-start gap-3 lg:grid-cols-2">
                   {nearbyPharmacies.map(
                     ({ pharmacy, open, distanceKm, inStockItems, latestUpdate }) => {
                       const isFav = favoritePharmacyIds.includes(pharmacy.id);
