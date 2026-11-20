@@ -86,9 +86,9 @@ export default function SettingsView({
             : "Non activée";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink-900">
             Préférences patient (locales)
           </h2>
@@ -159,10 +159,10 @@ export default function SettingsView({
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-            <div>
+          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-900">
-                <IconCrosshair className="h-3.5 w-3.5 text-brand-600" />
+                <IconCrosshair className="h-3.5 w-3.5 shrink-0 text-brand-600" />
                 Position GPS locale
               </p>
               <p className="mt-0.5 text-[11px] text-slate-500">
@@ -175,7 +175,7 @@ export default function SettingsView({
                   type="button"
                   disabled={locationStatus === "locating"}
                   onClick={() => requestLocation()}
-                  className="btn-secondary px-3 py-1.5 text-[11px]"
+                  className="btn-secondary w-full px-3 py-2 text-[11px] sm:w-auto"
                 >
                   Activer ma position
                 </button>
@@ -186,7 +186,7 @@ export default function SettingsView({
                     clearLocation();
                     notify("Position GPS effacée.");
                   }}
-                  className="btn-secondary px-3 py-1.5 text-[11px]"
+                  className="btn-secondary w-full px-3 py-2 text-[11px] sm:w-auto"
                 >
                   Effacer ma position
                 </button>
@@ -202,7 +202,7 @@ export default function SettingsView({
                 clearPatientPrefs();
                 notify("Préférences patient locales effacées.");
               }}
-              className="btn-secondary text-xs"
+              className="btn-secondary w-full text-xs sm:w-auto"
             >
               <IconTrash className="h-3.5 w-3.5" />
               Effacer mes préférences locales
@@ -219,21 +219,25 @@ export default function SettingsView({
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              {session?.type === "hospital" ? (
-                <IconHospital className="h-4 w-4 text-slate-500" />
+            <div className="flex min-w-0 items-center gap-2">
+              {session?.type === "hospital" && FEATURES.hospitals ? (
+                <IconHospital className="h-4 w-4 shrink-0 text-slate-500" />
               ) : session?.type === "admin" ? (
-                <IconUserCheck className="h-4 w-4 text-slate-500" />
+                <IconUserCheck className="h-4 w-4 shrink-0 text-slate-500" />
               ) : (
-                <IconPharmacy className="h-4 w-4 text-slate-500" />
+                <IconPharmacy className="h-4 w-4 shrink-0 text-slate-500" />
               )}
               <h2 className="text-sm font-semibold text-ink-900">
                 Accès professionnels &amp; Administration
               </h2>
             </div>
-            {session ? <Badge tone="green">Connecté</Badge> : null}
+            {session ? (
+              <Badge tone="green" className="shrink-0">
+                Connecté
+              </Badge>
+            ) : null}
           </div>
 
           {session ? (
@@ -244,7 +248,7 @@ export default function SettingsView({
               <p className="mt-0.5 text-xs text-slate-500">
                 {session.managerName} · {session.role}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500">
+              <p className="mt-0.5 break-all text-[11px] text-slate-500">
                 {session.email}
               </p>
               <p className="mt-1 text-[11px] text-slate-500">
@@ -320,7 +324,7 @@ export default function SettingsView({
         </Card>
       </div>
 
-      <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <IconDownload className="h-5 w-5" />
@@ -353,7 +357,7 @@ export default function SettingsView({
                 notify("Kéné a été installé sur cet appareil.");
               }
             }}
-            className="btn-primary whitespace-nowrap text-xs"
+            className="btn-primary w-full whitespace-nowrap text-xs sm:w-auto"
           >
             <IconDownload className="h-4 w-4" />
             Installer Kéné sur cet appareil
@@ -365,11 +369,13 @@ export default function SettingsView({
         <h2 className="mb-3 text-sm font-semibold text-ink-900">
           Abonnement pharmacie
         </h2>
-        <Card className="relative border-brand-500 p-5 ring-1 ring-brand-200">
-          <span className="absolute right-5 top-5">
+        <Card className="border-brand-500 p-4 ring-1 ring-brand-200 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-ink-900">
+              {settings.plan}
+            </p>
             <Badge tone="green">Plan actuel</Badge>
-          </span>
-          <p className="text-sm font-semibold text-ink-900">{settings.plan}</p>
+          </div>
           <p className="mt-1 max-w-lg text-xs leading-relaxed text-slate-500">
             Le back-office est facturé à la pharmacie, jamais au patient. 25 000
             FCFA par mois et par officine, sans engagement, réglés par Wave ou
@@ -402,16 +408,16 @@ export default function SettingsView({
             onClick={() =>
               notify("La facturation sera disponible à la mise en production.")
             }
-            className="btn-secondary mt-5 text-xs"
+            className="btn-secondary mt-5 w-full text-xs sm:w-auto"
           >
             Gérer l&apos;abonnement
           </button>
         </Card>
       </div>
 
-      <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
             <IconTrash className="h-5 w-5" />
           </span>
           <div>
@@ -426,7 +432,7 @@ export default function SettingsView({
         </div>
 
         {confirmReset ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               disabled={resetting}
@@ -437,7 +443,7 @@ export default function SettingsView({
                 setResetting(false);
                 setConfirmReset(false);
               }}
-              className="btn whitespace-nowrap bg-red-600 px-4 py-2.5 text-xs text-white hover:bg-red-700"
+              className="btn w-full whitespace-nowrap bg-red-600 px-4 py-2.5 text-xs text-white hover:bg-red-700 sm:w-auto"
             >
               {resetting
                 ? "Réinitialisation…"
@@ -447,7 +453,7 @@ export default function SettingsView({
               type="button"
               disabled={resetting}
               onClick={() => setConfirmReset(false)}
-              className="btn-secondary whitespace-nowrap text-xs"
+              className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
             >
               Annuler
             </button>
@@ -456,7 +462,7 @@ export default function SettingsView({
           <button
             type="button"
             onClick={() => setConfirmReset(true)}
-            className="btn-secondary whitespace-nowrap text-xs"
+            className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
           >
             Réinitialiser la démo
           </button>

@@ -15,7 +15,7 @@ import {
   IconShield,
   IconUserCheck,
 } from "../icons";
-import { BedGrid3D, GlowOrb } from "../visuals";
+import { BedGrid3D, Capsule3D, GlowOrb } from "../visuals";
 import { FEATURES } from "@/lib/features";
 import type { ProfessionalType } from "@/lib/types";
 
@@ -305,16 +305,31 @@ export default function ProfessionalAuth({
             ))}
           </ul>
 
-          <BedGrid3D className="mt-6 h-40" />
+          {FEATURES.hospitals ? (
+            <BedGrid3D className="mt-6 h-40" />
+          ) : (
+            <div className="mt-6 flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 backdrop-blur-sm">
+              <Capsule3D className="h-12 w-24 shrink-0 -rotate-12" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white">
+                  Stocks vérifiés en temps réel
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-300">
+                  Mettez à jour vos prix, vos gardes 24h/24 et votre position GPS
+                  en quelques clics.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             {type === "pharmacy" ? (
               <IconPharmacy className="h-4 w-4" />
-            ) : type === "hospital" ? (
+            ) : type === "hospital" && FEATURES.hospitals ? (
               <IconHospital className="h-4 w-4" />
             ) : (
               <IconUserCheck className="h-4 w-4" />
@@ -331,7 +346,7 @@ export default function ProfessionalAuth({
             <p className="text-[11px] text-slate-500">
               {type === "pharmacy"
                 ? "Espace pharmacie"
-                : type === "hospital"
+                : type === "hospital" && FEATURES.hospitals
                   ? "Espace hôpital"
                   : "Espace administration"}{" "}
               · Kéné
@@ -342,7 +357,9 @@ export default function ProfessionalAuth({
         <div
           className={cn(
             "mt-4 grid gap-2",
-            allowedTypes.length === 3 ? "grid-cols-3" : "grid-cols-2",
+            allowedTypes.length === 3
+              ? "grid-cols-1 sm:grid-cols-3"
+              : "grid-cols-2",
           )}
         >
           {allowedTypes.map((item) => (
@@ -438,7 +455,7 @@ export default function ProfessionalAuth({
                 placeholder={
                   type === "pharmacy"
                     ? "officine.rondpoint@kene.ci"
-                    : type === "hospital"
+                    : type === "hospital" && FEATURES.hospitals
                       ? "urgences.cocody@kene.ci"
                       : "admin@kene.ci"
                 }
@@ -556,7 +573,7 @@ export default function ProfessionalAuth({
                       }}
                       className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-2.5 py-2 text-left transition hover:shadow-card"
                     >
-                      <span className="min-w-0">
+                      <span className="min-w-0 flex-1">
                         <span className="block truncate text-[11px] font-semibold text-ink-900">
                           {displayTitle}
                         </span>

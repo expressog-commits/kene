@@ -85,6 +85,18 @@ export default function Workspace() {
     notify,
   } = useStore();
   const [view, setView] = useState<ViewKey>("search");
+  const [initialQuery, setInitialQuery] = useState("");
+
+  const consumeInitialQuery = useCallback(() => {
+    setInitialQuery("");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("q")) {
+        url.searchParams.delete("q");
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  }, []);
 
   const selectView = useCallback((next: ViewKey) => {
     const target =
@@ -92,9 +104,11 @@ export default function Workspace() {
         ? "search"
         : next;
     setView(target);
+    setInitialQuery("");
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("view", target);
+      url.searchParams.delete("q");
       window.history.replaceState(null, "", url.toString());
     }
   }, []);
@@ -103,6 +117,7 @@ export default function Workspace() {
     const syncFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       setView(parseView(params.get("view")));
+      setInitialQuery(params.get("q")?.trim() ?? "");
     };
     syncFromUrl();
     window.addEventListener("popstate", syncFromUrl);
@@ -262,7 +277,7 @@ export default function Workspace() {
 
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-sand/85 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-4">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
             <div className="flex items-center gap-3">
               <a href="/" aria-label="Kéné — Accueil" className="lg:hidden">
                 <IconLogo className="h-8 w-8 text-brand-500" />
@@ -271,7 +286,7 @@ export default function Workspace() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {HEADERS[activeView].kicker}
                 </p>
-                <h1 className="text-xl font-semibold tracking-tight text-ink-900">
+                <h1 className="text-lg font-semibold tracking-tight text-ink-900 sm:text-xl">
                   {HEADERS[activeView].title}
                 </h1>
               </div>
@@ -284,7 +299,7 @@ export default function Workspace() {
                   title={cachedAt ? `Données en cache du ${cachedAt}` : undefined}
                   className="inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-2.5 py-1 text-[11px] font-semibold text-sun-800"
                 >
-                  Hors-ligne (cache)
+                  Hors-ligne
                 </span>
               ) : null}
 
@@ -294,7 +309,7 @@ export default function Workspace() {
                   className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700"
                 >
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
-                  Enregistrement…
+                  <span className="hidden sm:inline">Enregistrement…</span>
                 </span>
               ) : null}
 
@@ -335,58 +350,40 @@ export default function Workspace() {
               {session?.type === "admin" ? (
                 <button
                   onClick={() => selectView("admin")}
-                  className="btn-secondary whitespace-nowrap text-xs"
+                  className="btn-secondary hidden whitespace-nowrap text-xs lg:inline-flex"
                 >
                   <IconUserCheck className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Administration</span>
-                  <span className="sm:hidden">Admin</span>
+                  <span>Administration</span>
                 </button>
               ) : (
                 <button
                   onClick={() => selectView("pharmacy")}
-                  className="btn-secondary max-w-[200px] whitespace-nowrap text-xs"
+                  className="btn-secondary hidden max-w-[200px] whitespace-nowrap text-xs lg:inline-flex"
                 >
                   <IconPharmacy className="h-4 w-4 shrink-0" />
-                  <span className="hidden truncate sm:inline">
+                  <span className="truncate">
                     {session?.type === "pharmacy"
                       ? session.establishmentName
                       : "Espace pharmacie"}
                   </span>
-                  <span className="sm:hidden">Pharmacie</span>
                 </button>
               )}
             </div>
           </div>
-
-          <nav
-            aria-label="Navigation mobile"
-            className="scroll-thin flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden"
-          >
-            {navItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => selectView(item.key)}
-                aria-current={activeView === item.key ? "page" : undefined}
-                className={cn(
-                  "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                  activeView === item.key
-                    ? "bg-ink-900 text-white"
-                    : "bg-white text-slate-500",
-                )}
-              >
-                {item.short}
-              </button>
-            ))}
-          </nav>
         </header>
 
         <main
           id="contenu"
           tabIndex={-1}
           aria-busy={saving}
-          className="mx-auto w-full max-w-6xl flex-1 px-5 py-6 focus:outline-none"
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 pb-24 focus:outline-none sm:px-5 lg:py-6 lg:pb-8"
         >
-          {activeView === "search" ? <Search /> : null}
+          {activeView === "search" ? (
+            <Search
+              initialQuery={initialQuery}
+              onConsumeInitialQuery={consumeInitialQuery}
+            />
+          ) : null}
           {activeView === "duty" ? <DutyPharmacies /> : null}
           {activeView === "emergency" && FEATURES.hospitals ? (
             <Emergency onManage={() => selectView("hospital")} />
@@ -427,8 +424,46 @@ export default function Workspace() {
         </main>
       </div>
 
+      <nav
+        aria-label="Navigation mobile"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/90 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      >
+        <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 py-1.5">
+          {navItems.map((item) => {
+            const active = activeView === item.key;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => selectView(item.key)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1.5 transition",
+                  active
+                    ? "bg-brand-50/80 text-brand-700"
+                    : "text-slate-500 hover:text-ink-900",
+                )}
+              >
+                <span className="relative">
+                  <Icon className="h-[18px] w-[18px]" />
+                  {item.key === "duty" && dutyList.length > 0 ? (
+                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-500 px-1 text-[9px] font-bold text-white">
+                      {dutyList.length}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="max-w-full truncate text-[10px] font-semibold">
+                  {item.short}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {recoveryCode ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-5">
+        <div className="pointer-events-none fixed inset-x-0 bottom-28 z-[60] flex justify-center px-5 lg:bottom-24">
           <div className="pointer-events-auto w-full max-w-md animate-fade-up rounded-2xl bg-white p-4 shadow-lift ring-1 ring-brand-200">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-700">
               Code de secours — à conserver
@@ -470,7 +505,7 @@ export default function Workspace() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-[60] w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 animate-fade-up rounded-xl bg-ink-900 px-4 py-3 text-center text-xs font-medium text-white shadow-lift"
+          className="fixed bottom-20 left-1/2 z-[60] w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 animate-fade-up rounded-xl bg-ink-900 px-4 py-3 text-center text-xs font-medium text-white shadow-lift lg:bottom-6"
         >
           {toast}
         </div>

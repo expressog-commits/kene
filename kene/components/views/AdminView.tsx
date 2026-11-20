@@ -15,6 +15,7 @@ import {
   IconShield,
   IconUserCheck,
 } from "../icons";
+import { FEATURES } from "@/lib/features";
 import { timeAgo } from "@/lib/format";
 import type { ActivityItem, VerificationStatus } from "@/lib/types";
 
@@ -41,7 +42,7 @@ const ACTIVITY_KIND_META: Record<
   admin: { label: "Admin", tone: "violet" },
   pharmacy: { label: "Officine", tone: "green" },
   stock: { label: "Stock", tone: "blue" },
-  beds: { label: "Urgences", tone: "amber" },
+  beds: { label: FEATURES.hospitals ? "Urgences" : "Activité", tone: "amber" },
   system: { label: "Système", tone: "neutral" },
 };
 
@@ -161,18 +162,18 @@ export default function AdminView() {
   };
 
   return (
-    <div className="space-y-5">
-      <Card className="p-5">
+    <div className="space-y-4">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <IconUserCheck className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-ink-900">
                 Administration et modération Kéné
               </p>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
                 Vérifiez les numéros d&apos;agrément ONP / DPML avant
                 d&apos;autoriser la publication publique d&apos;une officine.
               </p>
@@ -198,7 +199,7 @@ export default function AdminView() {
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
           {
             label: "Officines validées",
@@ -226,12 +227,12 @@ export default function AdminView() {
             tone: "neutral" as const,
           },
         ].map((card) => (
-          <Card key={card.label} className="p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <Card key={card.label} className="p-4 sm:p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               {card.label}
             </p>
-            <div className="mt-3 flex items-end justify-between gap-2">
-              <p className="text-2xl font-semibold tracking-tight text-ink-900">
+            <div className="mt-2.5 flex flex-wrap items-end justify-between gap-2">
+              <p className="text-xl font-semibold tracking-tight text-ink-900 sm:text-2xl">
                 {card.value}
               </p>
               <Badge tone={card.tone}>{card.sub}</Badge>
@@ -241,12 +242,12 @@ export default function AdminView() {
       </div>
 
       {counts.pending > 0 ? (
-        <div className="flex flex-col gap-2 rounded-2xl bg-ink-900 px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl bg-ink-900 px-4 py-3.5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sun-400/20 text-sun-300">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sun-400/20 text-sun-300">
               <IconAlert className="h-5 w-5" />
             </span>
-            <p className="text-sm">
+            <p className="text-xs sm:text-sm">
               <span className="font-semibold">
                 {counts.pending} officine{counts.pending > 1 ? "s" : ""} en
                 attente
@@ -258,14 +259,14 @@ export default function AdminView() {
           <button
             type="button"
             onClick={() => setStatusFilter("pending")}
-            className="btn bg-white px-4 py-2 text-xs text-ink-900 hover:bg-slate-100"
+            className="btn w-full shrink-0 bg-white px-4 py-2 text-xs text-ink-900 hover:bg-slate-100 sm:w-auto"
           >
             Filtrer en attente
           </button>
         </div>
       ) : null}
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-ink-900">
@@ -281,7 +282,7 @@ export default function AdminView() {
           </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <div
             role="group"
             aria-label="Filtrer par statut de validation"
@@ -308,7 +309,7 @@ export default function AdminView() {
                       : tab.key === "suspended"
                         ? "border-red-200 bg-red-50 text-red-700"
                         : "border-brand-500 bg-brand-50 text-brand-800"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300",
+                    : "border-slate-200 text-slate-600 hover:border-slate-300",
                 )}
               >
                 {tab.label}
@@ -316,7 +317,7 @@ export default function AdminView() {
             ))}
           </div>
 
-          <div className="relative min-w-[220px] flex-1">
+          <div className="relative w-full sm:min-w-[220px] sm:flex-1">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
             <input
               aria-label="Rechercher une officine par nom, commune ou numéro d'agrément"
@@ -331,7 +332,7 @@ export default function AdminView() {
         {actionError ? (
           <p
             role="alert"
-            className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600"
+            className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
           >
             {actionError}
           </p>
@@ -381,13 +382,13 @@ export default function AdminView() {
                       ) : null}
                     </div>
 
-                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 break-words text-xs text-slate-600">
                       <span className="inline-flex items-center gap-1">
-                        <IconMapPin className="h-3.5 w-3.5" />
+                        <IconMapPin className="h-3.5 w-3.5 shrink-0" />
                         {pharmacy.quartier} · {pharmacy.address}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <IconPhone className="h-3.5 w-3.5" />
+                        <IconPhone className="h-3.5 w-3.5 shrink-0" />
                         {pharmacy.phone}
                       </span>
                     </p>
@@ -474,7 +475,7 @@ export default function AdminView() {
         )}
       </Card>
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-ink-900">
@@ -502,9 +503,13 @@ export default function AdminView() {
                   key={entry.id}
                   className="flex flex-col gap-1.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Badge tone={kindMeta.tone}>{kindMeta.label}</Badge>
-                    <p className="text-xs text-ink-900">{entry.label}</p>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Badge tone={kindMeta.tone} className="shrink-0">
+                      {kindMeta.label}
+                    </Badge>
+                    <p className="min-w-0 break-words text-xs text-ink-900">
+                      {entry.label}
+                    </p>
                   </div>
                   <span className="shrink-0 text-[11px] text-slate-500">
                     {timeAgo(entry.at)}
@@ -516,20 +521,20 @@ export default function AdminView() {
         )}
       </Card>
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <IconLock className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-ink-900">
                 Compte administrateur
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
                 {session.managerName} · {session.role}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500">
+              <p className="mt-0.5 break-all text-[11px] text-slate-500">
                 {session.email} · connecté {timeAgo(session.signedInAt)}
               </p>
             </div>
@@ -540,7 +545,7 @@ export default function AdminView() {
               await signOut();
               notify("Déconnecté de l'espace administration.");
             }}
-            className="btn-secondary whitespace-nowrap text-xs"
+            className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
           >
             <IconLogout className="h-4 w-4" />
             Se déconnecter
@@ -609,7 +614,7 @@ export default function AdminView() {
               setCodeSaved(true);
               notify("Code d'accès administrateur mis à jour.");
             }}
-            className="btn-primary text-xs"
+            className="btn-primary w-full text-xs sm:w-auto"
           >
             <IconCheck className="h-4 w-4" />
             {codeBusy ? "Enregistrement…" : "Changer le code"}
@@ -619,7 +624,7 @@ export default function AdminView() {
         {codeError ? (
           <p
             role="alert"
-            className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600"
+            className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
           >
             {codeError}
           </p>

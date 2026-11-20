@@ -19,13 +19,16 @@ import {
 } from "@/components/icons";
 import { Capsule3D, GlowOrb, GlassChip, BedGrid3D } from "@/components/visuals";
 import {
+  LEVEL_META,
   dutyPharmacies,
   emergencySummary,
   filterHospitals,
+  openingLabel,
   publicPharmacies,
+  searchMedicine,
 } from "@/lib/engine";
 import { FEATURES } from "@/lib/features";
-import { distanceLabel } from "@/lib/format";
+import { distanceLabel, fcfaShort } from "@/lib/format";
 import { seedState } from "@/lib/seed";
 import { ensureSeeded, loadPublicState } from "@/lib/server/db";
 
@@ -77,6 +80,13 @@ const PHARMACY_FEATURES = [
   "Fiche officine, coordonnées GPS et WhatsApp à jour",
 ];
 
+const QUICK_LINKS = [
+  { label: "Paracétamol", href: "/app?view=search&q=Parac%C3%A9tamol" },
+  { label: "Amoxicilline", href: "/app?view=search&q=Amoxicilline" },
+  { label: "Artéméther", href: "/app?view=search&q=Art%C3%A9m%C3%A9ther" },
+  { label: "Doliprane", href: "/app?view=search&q=Doliprane" },
+] as const;
+
 export default async function LandingPage() {
   let state = seedState();
   try {
@@ -89,6 +99,55 @@ export default async function LandingPage() {
   const verified = publicPharmacies(state);
   const dutyList = dutyPharmacies(state);
   const beds = emergencySummary(state);
+
+  const artemetherMatches = searchMedicine(state, "Artéméther", {
+    quartier: "Tous",
+    onlyOpen: false,
+    onlyDuty: false,
+    onlyInStock: false,
+    sort: "distance",
+  });
+
+  const seenHeroPharmacies = new Set<string>();
+  const heroRows: Array<{
+    id: string;
+    name: string;
+    area: string;
+    price: string;
+    tone: "green" | "amber" | "red";
+    note: string;
+  }> = [];
+
+  for (const row of artemetherMatches) {
+    if (seenHeroPharmacies.has(row.pharmacy.id)) continue;
+    seenHeroPharmacies.add(row.pharmacy.id);
+    const meta = LEVEL_META[row.level];
+    heroRows.push({
+      id: row.pharmacy.id,
+      name: row.pharmacy.name,
+      area: `${row.pharmacy.quartier} · ${distanceLabel(row.distanceKm)}`,
+      price: row.level === "out" ? "—" : fcfaShort(row.stock.price),
+      tone: meta.tone,
+      note: meta.label,
+    });
+    if (heroRows.length >= 3) break;
+  }
+
+  if (heroRows.length === 0) {
+    for (const pharmacy of verified.slice(0, 3)) {
+      heroRows.push({
+        id: pharmacy.id,
+        name: pharmacy.name,
+        area: `${pharmacy.quartier} · ${distanceLabel(pharmacy.distanceKm)}`,
+        price: "En rayon",
+        tone: "green",
+        note: openingLabel(pharmacy),
+      });
+    }
+  }
+
+  const heroMatchCount = new Set(artemetherMatches.map((row) => row.pharmacy.id)).size;
+
   const bedsSample = FEATURES.hospitals
     ? filterHospitals(state, {
         quartier: "Tous",
@@ -145,7 +204,7 @@ export default async function LandingPage() {
           <GlowOrb className="-right-24 -top-24 h-[26rem] w-[26rem]" tone="brand" />
           <GlowOrb className="-bottom-32 -left-24 h-[22rem] w-[22rem]" tone="sun" />
 
-          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-5 py-14 lg:grid-cols-[1.02fr_0.98fr] lg:py-20">
+          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.04fr_0.96fr] lg:py-20">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-200/70 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-brand-700 backdrop-blur">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
@@ -153,13 +212,13 @@ export default async function LandingPage() {
                   ? `Abidjan · ${verified.length} pharmacies vérifiées et ${beds.centers} hôpitaux`
                   : `Abidjan · ${verified.length} pharmacies vérifiées · ${dutyList.length} de garde`}
               </span>
-              <h1 className="mt-5 text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-5xl">
+              <h1 className="mt-5 text-[2.45rem] font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-5xl">
                 Votre médicament est en stock.
                 <span className="block bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 bg-clip-text text-transparent">
                   On vous dit où, et à quel prix.
                 </span>
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
                 {FEATURES.hospitals ? (
                   <>
                     Kéné montre en quelques secondes quelles pharmacies vérifiées déclarent
@@ -177,26 +236,61 @@ export default async function LandingPage() {
                   </>
                 )}
               </p>
-              <div className="mt-7 flex flex-wrap items-center gap-3">
-                <a
-                  href="/app?view=search"
-                  className="btn-primary px-5 py-3 shadow-[0_18px_30px_-14px_rgba(11,126,114,0.9)]"
+
+              <form
+                action="/app"
+                method="GET"
+                className="mt-6 flex flex-col gap-2.5 sm:flex-row"
+              >
+                <input type="hidden" name="view" value="search" />
+                <div className="relative flex-1">
+                  <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    name="q"
+                    aria-label="Rechercher un médicament"
+                    placeholder="Ex : Paracétamol, Amoxicilline, Artéméther…"
+                    className="input bg-white py-3.5 pl-11 pr-3 shadow-card"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary whitespace-nowrap px-6 py-3.5 shadow-[0_18px_30px_-14px_rgba(11,126,114,0.9)]"
                 >
                   <IconSearch className="h-4 w-4" />
-                  Chercher un médicament
-                </a>
+                  Trouver
+                </button>
+              </form>
+
+              <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                {QUICK_LINKS.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-ink-900 transition hover:border-brand-400 hover:bg-brand-50"
+                  >
+                    {item.label}
+                  </a>
+                ))}
                 {FEATURES.hospitals ? (
-                  <a href="/app?view=emergency" className="btn-secondary px-5 py-3">
-                    <IconBed className="h-4 w-4" />
+                  <a
+                    href="/app?view=emergency"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+                  >
+                    <IconBed className="h-3.5 w-3.5" />
                     Voir les lits d&apos;urgence
                   </a>
                 ) : (
-                  <a href="/app?view=duty" className="btn-secondary px-5 py-3">
-                    <IconClock className="h-4 w-4" />
+                  <a
+                    href="/app?view=duty"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+                  >
+                    <IconClock className="h-3.5 w-3.5" />
                     Pharmacies de garde ({dutyList.length})
                   </a>
                 )}
               </div>
+
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
                   <IconCheck className="h-3.5 w-3.5 text-brand-500" />
@@ -232,43 +326,25 @@ export default async function LandingPage() {
                 </GlassChip>
 
                 <div className="rounded-2xl border border-white/70 bg-white/95 p-5 shadow-[0_50px_90px_-40px_rgba(11,31,29,0.55)] backdrop-blur">
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5">
+                  <a
+                    href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-400"
+                  >
                     <IconSearch className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs text-slate-600">
+                    <span className="text-xs text-slate-700">
                       Artéméther-Luméfantrine 20/120
                     </span>
                     <span className="ml-auto rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
-                      3 résultats
+                      {heroMatchCount || verified.length} résultats
                     </span>
-                  </div>
+                  </a>
 
                   <div className="mt-3 space-y-2">
-                    {[
-                      {
-                        name: "Pharmacie Saint-Jean",
-                        area: "Cocody · 2,1 km",
-                        price: "3 200 F",
-                        tone: "green",
-                        note: "De garde 24 h/24",
-                      },
-                      {
-                        name: "Pharmacie du Rond-Point",
-                        area: "Plateau · 600 m",
-                        price: "3 500 F",
-                        tone: "amber",
-                        note: "4 boîtes déclarées",
-                      },
-                      {
-                        name: "Pharmacie d'Abobo Gare",
-                        area: "Abobo · 3,4 km",
-                        price: "—",
-                        tone: "red",
-                        note: "En rupture",
-                      },
-                    ].map((row) => (
-                      <div
-                        key={row.name}
-                        className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-3"
+                    {heroRows.map((row) => (
+                      <a
+                        key={row.id}
+                        href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                        className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-3 transition hover:border-brand-200 hover:bg-slate-50/60"
                       >
                         <span
                           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
@@ -291,11 +367,14 @@ export default async function LandingPage() {
                           <p className="text-xs font-semibold text-ink-900">{row.price}</p>
                           <p className="text-[10px] text-slate-500">{row.note}</p>
                         </div>
-                      </div>
+                      </a>
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3">
+                  <a
+                    href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                    className="mt-4 flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 transition hover:bg-ink-800"
+                  >
                     <div className="text-white">
                       <p className="text-[10px] uppercase tracking-wide text-slate-400">
                         Orientation directe
@@ -307,7 +386,7 @@ export default async function LandingPage() {
                     <span className="rounded-lg bg-brand-400 px-2.5 py-1.5 text-[10px] font-bold text-ink-900">
                       Sans réservation
                     </span>
-                  </div>
+                  </a>
                 </div>
 
                 <GlassChip className="float-delay absolute -bottom-7 -left-3 z-30 flex items-center gap-3">
@@ -342,7 +421,7 @@ export default async function LandingPage() {
                 </GlassChip>
               </div>
               <p className="mt-8 text-center text-[10px] text-slate-500 lg:mt-6">
-                Aperçu indicatif — stocks et disponibilités déclaratifs
+                Stocks et prix déclarés en base par les officines vérifiées
               </p>
             </div>
           </div>

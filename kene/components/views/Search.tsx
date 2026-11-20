@@ -8,6 +8,7 @@ import {
   IconAlert,
   IconArrowRight,
   IconCheck,
+  IconChevronRight,
   IconClock,
   IconClose,
   IconCrosshair,
@@ -23,26 +24,42 @@ import {
   IconWhatsApp,
 } from "../icons";
 import {
-  CATEGORIES,
   LEVEL_META,
+  isOpen,
   openingLabel,
   popularMedicines,
   priceRange,
   publicPharmacies,
   searchMedicine,
   searchMedicineList,
+  stockLevel,
   suggestMedicines,
   type SearchFilters,
 } from "@/lib/engine";
 import { distanceLabel, fcfa, fcfaShort, timeAgo, waLink } from "@/lib/format";
-import { mapsDirectionsLink } from "@/lib/geo";
+import { effectiveDistanceKm, mapsDirectionsLink } from "@/lib/geo";
+import type { Medicine, StockItem } from "@/lib/types";
 
 type SearchMode = "single" | "list";
 type DisplayMode = "list" | "map";
 
 const MAX_LIST_ITEMS = 8;
 
-export default function Search() {
+const QUICK_SEARCHES = [
+  "Paracétamol",
+  "Amoxicilline",
+  "Paludisme",
+  "Sirop enfant",
+  "Sérum physiologique",
+] as const;
+
+export default function Search({
+  initialQuery,
+  onConsumeInitialQuery,
+}: {
+  initialQuery?: string;
+  onConsumeInitialQuery?: () => void;
+}) {
   const {
     state,
     userLocation,
@@ -67,6 +84,8 @@ export default function Search() {
   const [query, setQuery] = useState("");
   const [listQuery, setListQuery] = useState("");
   const [selectedMedicineIds, setSelectedMedicineIds] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [expandedPharmacyIds, setExpandedPharmacyIds] = useState<string[]>([]);
 
   const visiblePharmacies = useMemo(() => publicPharmacies(state), [state]);
   const quartiers = useMemo(
@@ -87,6 +106,15 @@ export default function Search() {
       lastPreferred.current = preferredQuartier;
     }
   }, [preferredQuartier, quartier, quartiers]);
+
+  useEffect(() => {
+    const incoming = initialQuery?.trim();
+    if (!incoming) return;
+    setMode("single");
+    setQuery(incoming);
+    addRecentSearch(incoming);
+    onConsumeInitialQuery?.();
+  }, [initialQuery, addRecentSearch, onConsumeInitialQuery]);
 
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -129,6 +157,96 @@ export default function Search() {
   const filters: SearchFilters = useMemo(
     () => ({ quartier, onlyOpen, onlyDuty, onlyInStock, sort }),
     [quartier, onlyOpen, onlyDuty, onlyInStock, sort],
+  );
+
+  const activeAdvancedCount =
+    (onlyInStock ? 1 : 0) +
+    (onlyFavorites ? 1 : 0) +
+    (sort !== "distance" ? 1 : 0);
+
+  const inStockByPharmacy = useMemo(() => {
+    const medicineById = new Map(state.medicines.map((item) => [item.id, item]));
+    const grouped = new Map<string, Array<{ medicine: Medicine; stock: StockItem }>>();
+    for (const item of state.stock) {
+      if (item.quantity <= 0) continue;
+      const medicine = medicineById.get(item.medicineId);
+      if (!medicine) continue;
+      const bucket = grouped.get(item.pharmacyId) ?? [];
+      bucket.push({ medicine, stock: item });
+      grouped.set(item.pharmacyId, bucket);
+    }
+    for (const bucket of grouped.values()) {
+      bucket.sort((a, b) => a.medicine.name.localeCompare(b.medicine.name));
+    }
+    return grouped;
+  }, [state.medicines, state.stock]);
+
+  const nearbyPharmacies = useMemo(() => {
+    return visiblePharmacies
+      .filter((pharmacy) => {
+        if (quartier !== "Tous" && pharmacy.quartier !== quartier) return false;
+        const open = isOpen(pharmacy);
+        if (onlyOpen && !open) return false;
+        if (onlyDuty && !pharmacy.onDuty) return false;
+        if (onlyFavorites && !favoritePharmacyIds.includes(pharmacy.id)) {
+          return false;
+        }
+        const items = inStockByPharmacy.get(pharmacy.id) ?? [];
+        if (onlyInStock && items.length === 0) return false;
+        return true;
+      })
+      .map((pharmacy) => {
+        const items = inStockByPharmacy.get(pharmacy.id) ?? [];
+        let latestUpdate: string | null = pharmacy.updatedAt ?? null;
+        let latestMs = latestUpdate ? Date.parse(latestUpdate) : 0;
+        for (const entry of items) {
+          const ms = Date.parse(entry.stock.updatedAt);
+          if (Number.isFinite(ms) && ms > latestMs) {
+            latestMs = ms;
+            latestUpdate = entry.stock.updatedAt;
+          }
+        }
+        return {
+          pharmacy,
+          open: isOpen(pharmacy),
+          distanceKm: effectiveDistanceKm(pharmacy, userLocation),
+          inStockItems: items,
+          latestUpdate,
+        };
+      })
+      .sort((a, b) => {
+        if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+        const dutyDiff = Number(b.pharmacy.onDuty) - Number(a.pharmacy.onDuty);
+        if (dutyDiff !== 0) return dutyDiff;
+        return Number(b.open) - Number(a.open);
+      });
+  }, [
+    visiblePharmacies,
+    quartier,
+    onlyOpen,
+    onlyDuty,
+    onlyFavorites,
+    onlyInStock,
+    favoritePharmacyIds,
+    inStockByPharmacy,
+    userLocation,
+  ]);
+
+  const nearbyMapMarkers = useMemo<PharmacyMapMarker[]>(
+    () =>
+      nearbyPharmacies.map(({ pharmacy, open, distanceKm, inStockItems }) => ({
+        pharmacy,
+        distanceKm,
+        badgeText: pharmacy.onDuty
+          ? "De garde 24h/24"
+          : open
+            ? "Ouvert"
+            : "Fermé",
+        badgeTone: open ? "green" : "amber",
+        subtitle: `${inStockItems.length} produits en stock · ${openingLabel(pharmacy)}`,
+        waText: `Bonjour, je vérifie la disponibilité de médicaments dans votre officine. (via Kéné)`,
+      })),
+    [nearbyPharmacies],
   );
 
   const rows = useMemo(() => {
@@ -228,6 +346,14 @@ export default function Search() {
     }));
   }, [listResults, selectedMedicines]);
 
+  const toggleExpandedPharmacy = (pharmacyId: string) => {
+    setExpandedPharmacyIds((previous) =>
+      previous.includes(pharmacyId)
+        ? previous.filter((id) => id !== pharmacyId)
+        : [...previous, pharmacyId],
+    );
+  };
+
   const addMedicineToList = (medicineId: string, switchToList = false) => {
     const medicine = state.medicines.find((item) => item.id === medicineId);
     if (!medicine) return;
@@ -265,7 +391,10 @@ export default function Search() {
   const copySelectedList = () => {
     if (selectedMedicines.length === 0) return;
     const textList = selectedMedicines
-      .map((medicine, idx) => `${idx + 1}. ${medicine.name} (${medicine.dci}) — ${medicine.form}`)
+      .map(
+        (medicine, idx) =>
+          `${idx + 1}. ${medicine.name} (${medicine.dci}) — ${medicine.form}`,
+      )
       .join("\n");
     void navigator.clipboard
       ?.writeText(`Liste Kéné :\n${textList}`)
@@ -278,46 +407,57 @@ export default function Search() {
   return (
     <div className="space-y-5">
       <Card className="p-5">
-        <div
-          role="tablist"
-          aria-label="Mode de recherche"
-          className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 text-xs font-semibold"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "single"}
-            onClick={() => setMode("single")}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-lg px-3 py-2 transition",
-              mode === "single"
-                ? "bg-white text-ink-900 shadow-sm"
-                : "text-slate-500 hover:text-ink-900",
-            )}
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-ink-900">
+              Quel médicament cherchez-vous ?
+            </h2>
+            <p className="text-xs text-slate-500">
+              Stocks, prix et officines vérifiées autour de vous en Côte d&apos;Ivoire.
+            </p>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Mode de recherche"
+            className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold sm:w-auto"
           >
-            <IconSearch className="h-3.5 w-3.5" />
-            <span>Un médicament</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "list"}
-            onClick={() => setMode("list")}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-lg px-3 py-2 transition",
-              mode === "list"
-                ? "bg-white text-ink-900 shadow-sm"
-                : "text-slate-500 hover:text-ink-900",
-            )}
-          >
-            <IconList className="h-3.5 w-3.5" />
-            <span>Liste / Ordonnance</span>
-            {selectedMedicineIds.length > 0 ? (
-              <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                {selectedMedicineIds.length}
-              </span>
-            ) : null}
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "single"}
+              onClick={() => setMode("single")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
+                mode === "single"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-slate-500 hover:text-ink-900",
+              )}
+            >
+              <IconSearch className="h-3.5 w-3.5" />
+              <span>Un médicament</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "list"}
+              onClick={() => setMode("list")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
+                mode === "list"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-slate-500 hover:text-ink-900",
+              )}
+            >
+              <IconList className="h-3.5 w-3.5" />
+              <span>Mon ordonnance</span>
+              {selectedMedicineIds.length > 0 ? (
+                <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {selectedMedicineIds.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
         </div>
 
         {mode === "single" ? (
@@ -346,9 +486,22 @@ export default function Search() {
                   }
                   if (query.trim().length >= 2) addRecentSearch(query);
                 }}
-                placeholder="Paracétamol, amoxicilline, cétirizine, test paludisme…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-12 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                placeholder="Paracétamol, amoxicilline, artéméther, sirop…"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-20 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
               />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    inputRef.current?.focus();
+                  }}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-ink-900 sm:right-10"
+                >
+                  <IconClose className="h-4 w-4" />
+                </button>
+              ) : null}
               <span id="search-shortcut" className="sr-only">
                 Appuyez sur la barre oblique pour revenir à ce champ depuis n&apos;importe
                 quelle page.
@@ -408,6 +561,34 @@ export default function Search() {
               </div>
             ) : null}
 
+            <div
+              onMouseDown={() => {
+                suppressBlurRef.current = true;
+              }}
+              className="mt-3 flex flex-wrap gap-1.5"
+            >
+              {QUICK_SEARCHES.map((term) => (
+                <button
+                  key={term}
+                  type="button"
+                  onClick={() => {
+                    const next = term === query ? "" : term;
+                    setQuery(next);
+                    if (next) addRecentSearch(next);
+                  }}
+                  aria-pressed={query === term}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                    query === term
+                      ? "bg-ink-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                  )}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+
             {recentSearches.length > 0 ? (
               <div
                 onMouseDown={() => {
@@ -441,34 +622,6 @@ export default function Search() {
                 </button>
               </div>
             ) : null}
-
-            <div
-              onMouseDown={() => {
-                suppressBlurRef.current = true;
-              }}
-              className="mt-3 flex flex-wrap gap-1.5"
-            >
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => {
-                    const next = category === query ? "" : category;
-                    setQuery(next);
-                    if (next) addRecentSearch(next);
-                  }}
-                  aria-pressed={query === category}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
-                    query === category
-                      ? "bg-ink-900 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-                  )}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
           </>
         ) : (
           <div className="space-y-3">
@@ -635,31 +788,18 @@ export default function Search() {
             </button>
           )}
 
-          <select
-            aria-label="Filtrer par quartier"
-            value={quartier}
-            onChange={(event) => setQuartier(event.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 focus:border-brand-400 focus:outline-none"
-          >
-            {quartiers.map((item) => (
-              <option key={item} value={item}>
-                {item === "Tous" ? "Tous les quartiers" : item}
-              </option>
-            ))}
-          </select>
-
           <button
             type="button"
-            onClick={() => setOnlyInStock((value) => !value)}
-            aria-pressed={onlyInStock}
+            onClick={() => setOnlyDuty((value) => !value)}
+            aria-pressed={onlyDuty}
             className={cn(
               "rounded-xl border px-3 py-2 text-xs font-medium transition",
-              onlyInStock
+              onlyDuty
                 ? "border-brand-500 bg-brand-50 text-brand-700"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            En stock seulement
+            De garde 24h/24
           </button>
 
           <button
@@ -673,56 +813,92 @@ export default function Search() {
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            Ouvert maintenant
+            Ouvertes
           </button>
+
+          <select
+            aria-label="Commune"
+            value={quartier}
+            onChange={(event) => setQuartier(event.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 focus:border-brand-400 focus:outline-none"
+          >
+            {quartiers.map((item) => (
+              <option key={item} value={item}>
+                {item === "Tous" ? "Toutes communes" : item}
+              </option>
+            ))}
+          </select>
 
           <button
             type="button"
-            onClick={() => setOnlyDuty((value) => !value)}
-            aria-pressed={onlyDuty}
+            onClick={() => setFiltersOpen((value) => !value)}
+            aria-expanded={filtersOpen}
             className={cn(
-              "rounded-xl border px-3 py-2 text-xs font-medium transition",
-              onlyDuty
-                ? "border-brand-500 bg-brand-50 text-brand-700"
+              "ml-auto inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition",
+              filtersOpen || activeAdvancedCount > 0
+                ? "border-brand-400 bg-brand-50/70 text-brand-800"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            De garde
+            <span>Filtres</span>
+            {activeAdvancedCount > 0 ? (
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
+                {activeAdvancedCount}
+              </span>
+            ) : null}
           </button>
+        </div>
 
-          {favoritePharmacyIds.length > 0 ? (
+        {filtersOpen ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
             <button
               type="button"
-              onClick={() => setOnlyFavorites((value) => !value)}
-              aria-pressed={onlyFavorites}
+              onClick={() => setOnlyInStock((value) => !value)}
+              aria-pressed={onlyInStock}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition",
-                onlyFavorites
-                  ? "border-sun-400 bg-sun-50 text-sun-800"
+                "rounded-xl border px-3 py-1.5 text-xs font-medium transition",
+                onlyInStock
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
               )}
             >
-              <IconStar filled={onlyFavorites} className="h-3.5 w-3.5 text-sun-500" />
-              Mes favorites
+              En stock seulement
             </button>
-          ) : null}
 
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-            Trier par
-            <select
-              aria-label="Trier les résultats"
-              value={sort}
-              onChange={(event) =>
-                setSort(event.target.value as "distance" | "price" | "freshness")
-              }
-              className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 focus:border-brand-400 focus:outline-none"
-            >
-              <option value="distance">Distance</option>
-              <option value="price">Prix</option>
-              <option value="freshness">Mise à jour récente</option>
-            </select>
+            {favoritePharmacyIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setOnlyFavorites((value) => !value)}
+                aria-pressed={onlyFavorites}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition",
+                  onlyFavorites
+                    ? "border-sun-400 bg-sun-50 text-sun-800"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
+                )}
+              >
+                <IconStar filled={onlyFavorites} className="h-3.5 w-3.5 text-sun-500" />
+                Mes favorites
+              </button>
+            ) : null}
+
+            <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+              <span>Tri</span>
+              <select
+                aria-label="Trier les résultats"
+                value={sort}
+                onChange={(event) =>
+                  setSort(event.target.value as "distance" | "price" | "freshness")
+                }
+                className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 focus:border-brand-400 focus:outline-none"
+              >
+                <option value="distance">Distance</option>
+                <option value="price">Prix</option>
+                <option value="freshness">Mise à jour récente</option>
+              </select>
+            </div>
           </div>
-        </div>
+        ) : null}
       </Card>
 
       {mode === "single" ? (
@@ -827,7 +1003,11 @@ export default function Search() {
                               <IconStar filled={isFav} className="h-4 w-4" />
                             </button>
                             <Badge tone={open ? "green" : "neutral"}>
-                              {open ? (pharmacy.onDuty ? "De garde" : "Ouvert") : "Fermé"}
+                              {open
+                                ? pharmacy.onDuty
+                                  ? "De garde 24h/24"
+                                  : "Ouvert"
+                                : "Fermé"}
                             </Badge>
                             <Badge tone={meta.tone}>{meta.label}</Badge>
                           </div>
@@ -916,6 +1096,248 @@ export default function Search() {
           </>
         ) : (
           <>
+            <div>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-ink-900">
+                    Pharmacies vérifiées près de vous ({nearbyPharmacies.length})
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Consultez directement les stocks déclarés, la carte et les contacts.
+                  </p>
+                </div>
+
+                {nearbyPharmacies.length > 0 ? (
+                  <div
+                    role="group"
+                    aria-label="Affichage des pharmacies près de vous"
+                    className="inline-flex rounded-xl bg-white p-1 text-xs font-semibold shadow-card"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setDisplay("list")}
+                      aria-pressed={display === "list"}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition",
+                        display === "list"
+                          ? "bg-ink-900 text-white"
+                          : "text-slate-600 hover:text-ink-900",
+                      )}
+                    >
+                      <IconList className="h-3.5 w-3.5" />
+                      Liste
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDisplay("map")}
+                      aria-pressed={display === "map"}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition",
+                        display === "map"
+                          ? "bg-ink-900 text-white"
+                          : "text-slate-600 hover:text-ink-900",
+                      )}
+                    >
+                      <IconMap className="h-3.5 w-3.5" />
+                      Carte
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {nearbyPharmacies.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-sm font-medium text-ink-900">
+                    Aucune pharmacie vérifiée pour ces filtres
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Élargissez la commune ou désactivez un filtre ci-dessus.
+                  </p>
+                </Card>
+              ) : display === "map" ? (
+                <PharmacyMap markers={nearbyMapMarkers} userLocation={userLocation} />
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {nearbyPharmacies.map(
+                    ({ pharmacy, open, distanceKm, inStockItems, latestUpdate }) => {
+                      const isFav = favoritePharmacyIds.includes(pharmacy.id);
+                      const isExpanded = expandedPharmacyIds.includes(pharmacy.id);
+                      return (
+                        <Card
+                          key={pharmacy.id}
+                          className="flex flex-col justify-between p-5"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-ink-900">
+                                    {pharmacy.name}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleFavoritePharmacy(pharmacy.id)}
+                                    aria-pressed={isFav}
+                                    aria-label={
+                                      isFav
+                                        ? `Retirer ${pharmacy.name} des favorites`
+                                        : `Ajouter ${pharmacy.name} aux favorites`
+                                    }
+                                    className={cn(
+                                      "rounded-lg p-1 transition",
+                                      isFav
+                                        ? "text-sun-500 hover:bg-sun-50"
+                                        : "text-slate-400 hover:bg-slate-100 hover:text-sun-500",
+                                    )}
+                                  >
+                                    <IconStar filled={isFav} className="h-4 w-4" />
+                                  </button>
+                                  <Badge tone={open ? "green" : "neutral"}>
+                                    {open
+                                      ? pharmacy.onDuty
+                                        ? "De garde 24h/24"
+                                        : "Ouvert"
+                                      : "Fermé"}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                  <span className="inline-flex items-center gap-1 font-medium text-ink-900">
+                                    <IconMapPin className="h-3.5 w-3.5 text-brand-600" />
+                                    {pharmacy.quartier} · {distanceLabel(distanceKm)}
+                                  </span>
+                                  <span>{openingLabel(pharmacy)}</span>
+                                </p>
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  {pharmacy.address}
+                                </p>
+                              </div>
+
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-brand-700">
+                                  {inStockItems.length} produits
+                                </p>
+                                <p className="text-[10px] text-slate-500">
+                                  {latestUpdate ? timeAgo(latestUpdate) : "vérifiée"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {inStockItems.length > 0 ? (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpandedPharmacy(pharmacy.id)}
+                                  aria-expanded={isExpanded}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs font-semibold text-ink-900 transition hover:border-brand-300 hover:bg-brand-50/60"
+                                >
+                                  <IconChevronRight
+                                    className={cn(
+                                      "h-3.5 w-3.5 text-brand-600 transition-transform",
+                                      isExpanded && "rotate-90",
+                                    )}
+                                  />
+                                  {isExpanded
+                                    ? `Masquer les médicaments (${inStockItems.length})`
+                                    : `Voir les médicaments en stock (${inStockItems.length})`}
+                                </button>
+
+                                {isExpanded ? (
+                                  <ul className="scroll-thin mt-2 max-h-60 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60">
+                                    {inStockItems.map(({ medicine, stock }) => {
+                                      const level = stockLevel(stock);
+                                      const meta = LEVEL_META[level];
+                                      const inList = selectedMedicineIds.includes(
+                                        medicine.id,
+                                      );
+                                      return (
+                                        <li
+                                          key={medicine.id}
+                                          className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setQuery(medicine.name);
+                                              addRecentSearch(medicine.name);
+                                            }}
+                                            className="min-w-0 flex-1 text-left transition hover:text-brand-700"
+                                          >
+                                            <p className="truncate font-medium text-ink-900">
+                                              {medicine.name}
+                                            </p>
+                                            <p className="truncate text-[10px] text-slate-500">
+                                              {medicine.dci} · {meta.label}
+                                              {level === "low"
+                                                ? ` (${stock.quantity})`
+                                                : ""}
+                                            </p>
+                                          </button>
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-ink-900">
+                                              {fcfa(stock.price)}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                addMedicineToList(medicine.id)
+                                              }
+                                              className={cn(
+                                                "rounded-md border px-2 py-1 text-[10px] font-semibold transition",
+                                                inList
+                                                  ? "border-brand-200 bg-brand-50 text-brand-700"
+                                                  : "border-slate-200 bg-white text-brand-700 hover:border-brand-300 hover:bg-brand-50",
+                                              )}
+                                            >
+                                              {inList ? "Ajouté" : "+ Ma liste"}
+                                            </button>
+                                          </div>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                            <a
+                              href={mapsDirectionsLink(pharmacy, userLocation)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn-primary px-3.5 py-2 text-xs"
+                            >
+                              <IconNavigation className="h-3.5 w-3.5" />
+                              Itinéraire
+                            </a>
+                            <a
+                              href={`tel:${pharmacy.phone.replace(/\s/g, "")}`}
+                              className="btn-secondary px-3 py-2 text-xs"
+                            >
+                              <IconPhone className="h-3.5 w-3.5" />
+                              Appeler
+                            </a>
+                            <a
+                              href={waLink(
+                                pharmacy.whatsapp,
+                                `Bonjour, je vérifie la disponibilité de médicaments dans votre officine. (via Kéné)`,
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn bg-[#25D366] px-3 py-2 text-xs text-ink-900 hover:bg-[#1FB855]"
+                            >
+                              <IconWhatsApp className="h-3.5 w-3.5" />
+                              WhatsApp
+                            </a>
+                          </div>
+                        </Card>
+                      );
+                    },
+                  )}
+                </div>
+              )}
+            </div>
+
             <div>
               <h2 className="mb-3 text-sm font-semibold text-ink-900">
                 Médicaments les plus disponibles
@@ -1131,7 +1553,11 @@ export default function Search() {
                             <IconStar filled={isFav} className="h-4 w-4" />
                           </button>
                           <Badge tone={open ? "green" : "neutral"}>
-                            {open ? (pharmacy.onDuty ? "De garde" : "Ouvert") : "Fermé"}
+                            {open
+                              ? pharmacy.onDuty
+                                ? "De garde 24h/24"
+                                : "Ouvert"
+                              : "Fermé"}
                           </Badge>
                           <Badge
                             tone={

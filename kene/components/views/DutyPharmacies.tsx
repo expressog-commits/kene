@@ -6,6 +6,7 @@ import { Badge, Card, cn } from "../ui";
 import PharmacyMap, { type PharmacyMapMarker } from "../PharmacyMap";
 import {
   IconAlert,
+  IconChevronRight,
   IconClock,
   IconClose,
   IconCrosshair,
@@ -18,9 +19,16 @@ import {
   IconStar,
   IconWhatsApp,
 } from "../icons";
-import { dutyPharmacies, openingLabel, publicPharmacies } from "@/lib/engine";
+import {
+  LEVEL_META,
+  dutyPharmacies,
+  openingLabel,
+  publicPharmacies,
+  stockLevel,
+} from "@/lib/engine";
 import { distanceLabel, fcfa, timeAgo, waLink } from "@/lib/format";
 import { mapsDirectionsLink } from "@/lib/geo";
+import type { Medicine, StockItem } from "@/lib/types";
 
 export default function DutyPharmacies() {
   const {
@@ -36,8 +44,12 @@ export default function DutyPharmacies() {
   const [quartier, setQuartier] = useState("Tous");
   const [query, setQuery] = useState("");
   const [display, setDisplay] = useState<"list" | "map">("list");
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
-  const allDuty = useMemo(() => dutyPharmacies(state, { userLocation }), [state, userLocation]);
+  const allDuty = useMemo(
+    () => dutyPharmacies(state, { userLocation }),
+    [state, userLocation],
+  );
   const quartiers = useMemo(
     () => [
       "Tous",
@@ -50,6 +62,31 @@ export default function DutyPharmacies() {
     () => dutyPharmacies(state, { quartier, query, userLocation }),
     [state, quartier, query, userLocation],
   );
+
+  const inStockByPharmacy = useMemo(() => {
+    const medicineById = new Map(state.medicines.map((item) => [item.id, item]));
+    const grouped = new Map<string, Array<{ medicine: Medicine; stock: StockItem }>>();
+    for (const item of state.stock) {
+      if (item.quantity <= 0) continue;
+      const medicine = medicineById.get(item.medicineId);
+      if (!medicine) continue;
+      const bucket = grouped.get(item.pharmacyId) ?? [];
+      bucket.push({ medicine, stock: item });
+      grouped.set(item.pharmacyId, bucket);
+    }
+    for (const bucket of grouped.values()) {
+      bucket.sort((a, b) => a.medicine.name.localeCompare(b.medicine.name));
+    }
+    return grouped;
+  }, [state.medicines, state.stock]);
+
+  const toggleExpanded = (pharmacyId: string) => {
+    setExpandedIds((previous) =>
+      previous.includes(pharmacyId)
+        ? previous.filter((id) => id !== pharmacyId)
+        : [...previous, pharmacyId],
+    );
+  };
 
   const mapMarkers = useMemo<PharmacyMapMarker[]>(
     () =>
@@ -227,6 +264,9 @@ export default function DutyPharmacies() {
         <div className="grid gap-4 lg:grid-cols-2">
           {rows.map(({ pharmacy, distanceKm, inStockCount, matchingMedicines }) => {
             const isFav = favoritePharmacyIds.includes(pharmacy.id);
+            const isExpanded = expandedIds.includes(pharmacy.id);
+            const catalogItems = inStockByPharmacy.get(pharmacy.id) ?? [];
+
             return (
               <Card key={pharmacy.id} className="flex flex-col justify-between p-5">
                 <div>
@@ -296,6 +336,61 @@ export default function DutyPharmacies() {
                         </li>
                       ))}
                     </ul>
+                  ) : null}
+
+                  {catalogItems.length > 0 ? (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(pharmacy.id)}
+                        aria-expanded={isExpanded}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs font-semibold text-ink-900 transition hover:border-brand-300 hover:bg-brand-50/60"
+                      >
+                        <IconChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 text-brand-600 transition-transform",
+                            isExpanded && "rotate-90",
+                          )}
+                        />
+                        {isExpanded
+                          ? `Masquer les médicaments (${catalogItems.length})`
+                          : `Voir les médicaments en stock (${catalogItems.length})`}
+                      </button>
+
+                      {isExpanded ? (
+                        <ul className="scroll-thin mt-2 max-h-60 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60">
+                          {catalogItems.map(({ medicine, stock }) => {
+                            const level = stockLevel(stock);
+                            const meta = LEVEL_META[level];
+                            return (
+                              <li
+                                key={medicine.id}
+                                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium text-ink-900">
+                                    {medicine.name}
+                                  </p>
+                                  <p className="truncate text-[10px] text-slate-500">
+                                    {medicine.dci} · {medicine.form}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge tone={meta.tone}>
+                                    {level === "low"
+                                      ? `${meta.label} (${stock.quantity})`
+                                      : meta.label}
+                                  </Badge>
+                                  <span className="font-semibold text-ink-900">
+                                    {fcfa(stock.price)}
+                                  </span>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 

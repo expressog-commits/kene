@@ -195,3 +195,7 @@
 .leaflet-popup-content {
   margin: 12px 14px;
 }
+
+.pb-safe {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+}

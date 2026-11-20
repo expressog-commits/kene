@@ -1,4 +1,4 @@
-const CACHE_NAME = "kene-v1";
+const CACHE_NAME = "kene-v2";
 const PRECACHE_URLS = [
   "/offline",
   "/manifest.webmanifest",

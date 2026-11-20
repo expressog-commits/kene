@@ -36,4 +36,6 @@ jobs:
           context: ./kene
           file: ./kene/Dockerfile
           push: true
-          tags: ghcr.io/expressog-commits/kene:latest
+          tags: |
+            ghcr.io/expressog-commits/kene:latest
+            ghcr.io/expressog-commits/kene:${{ github.sha }}
