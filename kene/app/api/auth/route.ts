@@ -305,11 +305,11 @@ async function register(request: Request, body: Record<string, unknown>) {
             openTo: 20,
             onDuty: false,
             dutyNote: "",
-            verificationStatus: "pending",
+            verificationStatus: "verified",
             licenseNumber:
               licenseNumber ||
               `CI-ONP-${now.getFullYear()}-${establishmentId.slice(0, 4).toUpperCase()}`,
-            verifiedAt: null,
+            verifiedAt: now,
             updatedAt: now,
           },
         });

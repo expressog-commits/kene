@@ -13,15 +13,13 @@ import {
   IconSearch,
   IconShield,
   IconTrash,
-  IconUserCheck,
 } from "../icons";
 import { FEATURES } from "@/lib/features";
-import type { ProfessionalType } from "@/lib/types";
 
 export default function SettingsView({
   onOpenProfessional,
 }: {
-  onOpenProfessional: (type: ProfessionalType) => void;
+  onOpenProfessional: (type: "pharmacy" | "hospital") => void;
 }) {
   const {
     state,
@@ -42,7 +40,6 @@ export default function SettingsView({
     resetDemo,
     notify,
   } = useStore();
-  const { settings } = state;
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -222,15 +219,9 @@ export default function SettingsView({
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              {session?.type === "hospital" && FEATURES.hospitals ? (
-                <IconHospital className="h-4 w-4 shrink-0 text-slate-500" />
-              ) : session?.type === "admin" ? (
-                <IconUserCheck className="h-4 w-4 shrink-0 text-slate-500" />
-              ) : (
-                <IconPharmacy className="h-4 w-4 shrink-0 text-slate-500" />
-              )}
+              <IconPharmacy className="h-4 w-4 shrink-0 text-brand-600" />
               <h2 className="text-sm font-semibold text-ink-900">
-                Accès professionnels &amp; Administration
+                Espace Pharmacie
               </h2>
             </div>
             {session ? (
@@ -252,17 +243,20 @@ export default function SettingsView({
                 {session.email}
               </p>
               <p className="mt-1 text-[11px] text-slate-500">
-                {session.type === "pharmacy"
-                  ? "Compte pharmacie — accès limité à cette officine."
-                  : session.type === "hospital"
-                    ? "Compte hôpital — accès limité à cet établissement."
-                    : "Compte administrateur — modération et validation des officines."}
+                Gérez votre stock, vos horaires de garde et votre position GPS
+                en temps réel.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => onOpenProfessional(session.type)}
+                  onClick={() =>
+                    onOpenProfessional(
+                      session.type === "hospital" && FEATURES.hospitals
+                        ? "hospital"
+                        : "pharmacy",
+                    )
+                  }
                   className="btn-primary text-xs"
                 >
                   Ouvrir mon espace
@@ -271,7 +265,7 @@ export default function SettingsView({
                   type="button"
                   onClick={async () => {
                     await signOut();
-                    notify("Déconnecté du compte professionnel.");
+                    notify("Déconnecté de l'espace pharmacie.");
                   }}
                   className="btn-secondary text-xs"
                 >
@@ -283,17 +277,18 @@ export default function SettingsView({
           ) : (
             <>
               <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                Aucun compte professionnel connecté. Accédez à l&apos;espace de
-                votre officine ou à l&apos;administration Kéné.
+                Vous êtes pharmacien ? Connectez votre officine ou inscrivez-la
+                gratuitement pour publier votre stock, vos prix et vos horaires
+                de garde.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => onOpenProfessional("pharmacy")}
-                  className="btn-secondary text-xs"
+                  className="btn-primary text-xs"
                 >
                   <IconPharmacy className="h-4 w-4" />
-                  Espace pharmacie
+                  Accéder à l&apos;Espace Pharmacie
                 </button>
                 {FEATURES.hospitals ? (
                   <button
@@ -305,20 +300,7 @@ export default function SettingsView({
                     Espace hôpital
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => onOpenProfessional("admin")}
-                  className="btn-secondary text-xs"
-                >
-                  <IconUserCheck className="h-4 w-4" />
-                  Administration
-                </button>
               </div>
-              <p className="mt-3 text-[10px] text-slate-500">
-                Comptes gérés en base SQL (codes hachés scrypt, session
-                HttpOnly). Les nouvelles pharmacies attendent la validation
-                administrateur avant publication.
-              </p>
             </>
           )}
         </Card>
@@ -367,52 +349,70 @@ export default function SettingsView({
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-ink-900">
-          Abonnement pharmacie
+          Modèle économique Kéné : Publicité &amp; Abonnement
         </h2>
-        <Card className="border-brand-500 p-4 ring-1 ring-brand-200 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-ink-900">
-              {settings.plan}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-brand-500 p-4 ring-1 ring-brand-200 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink-900">
+                1. Financement par la Publicité
+              </p>
+              <Badge tone="green">Phase actuelle · Publicité</Badge>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              Aujourd&apos;hui, la plateforme est{" "}
+              <strong>100 % gratuite</strong> pour les patients comme pour
+              l&apos;inscription des pharmacies. Kéné se finance grâce aux
+              espaces publicitaires dédiés aux acteurs et partenaires de la
+              santé.
             </p>
-            <Badge tone="green">Plan actuel</Badge>
-          </div>
-          <p className="mt-1 max-w-lg text-xs leading-relaxed text-slate-500">
-            Le back-office est facturé à la pharmacie, jamais au patient. 25 000
-            FCFA par mois et par officine, sans engagement, réglés par Wave ou
-            Orange Money.
-          </p>
-          <p className="mt-4 text-2xl font-semibold text-ink-900">
-            25 000 FCFA
-            <span className="text-xs font-normal text-slate-500"> / mois</span>
-          </p>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {[
-              "Stock et prix visibles en temps réel par les patients",
-              "Import CSV / Excel en masse et mise à jour instantanée",
-              "Mise en avant « de garde » 24 h/24 et géolocalisation GPS",
-              "Contact direct par téléphone, WhatsApp et itinéraire",
-              "Fiche officine complète, agrément vérifié et horaires",
-              "Support dédié et multi-officines (sur devis)",
-            ].map((feature) => (
-              <li
-                key={feature}
-                className="flex items-start gap-2 text-xs text-slate-600"
-              >
-                <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" />
-                {feature}
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            onClick={() =>
-              notify("La facturation sera disponible à la mise en production.")
-            }
-            className="btn-secondary mt-5 w-full text-xs sm:w-auto"
-          >
-            Gérer l&apos;abonnement
-          </button>
-        </Card>
+            <ul className="mt-4 space-y-2">
+              {[
+                "Recherche et géolocalisation gratuites pour tous les patients",
+                "Inscription et publication du stock gratuites pour les officines",
+                "Espaces publicitaires clairement identifiés (partenaires santé & parapharmacie)",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-xs text-slate-600"
+                >
+                  <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink-900">
+                2. Abonnement Pharmacies
+              </p>
+              <Badge tone="amber">Une fois devenue la référence</Badge>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              Une fois que la plateforme Kéné sera installée comme la référence
+              incontournable pour trouver un médicament, les pharmacies paieront
+              un tarif d&apos;abonnement pour la diffusion de leur stock en
+              temps réel et leurs outils avancés.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {[
+                "Diffusion prioritaire du stock, des prix et des gardes 24h/24",
+                "Import automatisé CSV / Excel et synchronisation du catalogue",
+                "Jamais facturé au patient — service public d'orientation gratuit",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-xs text-slate-600"
+                >
+                  <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
       </div>
 
       <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -425,8 +425,8 @@ export default function SettingsView({
               Données de démonstration
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              Réinitialise les stocks, comptes et officines d&apos;origine en
-              base SQL. Vos modifications seront perdues.
+              Réinitialise les stocks, comptes et officines d&apos;origine. Vos
+              modifications seront perdues.
             </p>
           </div>
         </div>
@@ -471,7 +471,7 @@ export default function SettingsView({
 
       <p className="text-center text-[11px] text-slate-500">
         Préférences patient et position GPS stockées localement dans votre
-        navigateur · stocks et comptes synchronisés avec le serveur Kéné
+        navigateur · stocks synchronisés avec le serveur Kéné
       </p>
     </div>
   );

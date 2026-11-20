@@ -10,7 +10,6 @@ import {
   IconCrosshair,
   IconDownload,
   IconList,
-  IconLock,
   IconLogout,
   IconMinus,
   IconPhone,
@@ -32,7 +31,7 @@ import {
 import { timeAgo } from "@/lib/format";
 import type { BulkImportSummary } from "@/lib/types";
 
-type PharmacyTab = "stock" | "csv" | "profile" | "security";
+type PharmacyTab = "stock" | "csv" | "profile";
 
 function normalizeText(value: string): string {
   return value
@@ -53,7 +52,6 @@ export default function PharmacyView() {
     publishStock,
     toggleDuty,
     signOut,
-    changeAccessCode,
     notify,
   } = useStore();
 
@@ -102,12 +100,6 @@ export default function PharmacyView() {
   const [addQuantity, setAddQuantity] = useState("10");
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-
-  const [currentCode, setCurrentCode] = useState("");
-  const [nextCode, setNextCode] = useState("");
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const [codeSaved, setCodeSaved] = useState(false);
-  const [codeBusy, setCodeBusy] = useState(false);
 
   useEffect(() => {
     if (!pharmacy) return;
@@ -448,61 +440,23 @@ export default function PharmacyView() {
       icon: IconCrosshair,
       hasAlert: hasProfileErrors,
     },
-    {
-      key: "security",
-      label: "Sécurité & code",
-      icon: IconLock,
-    },
   ];
 
   return (
     <div className="space-y-4">
-      {pharmacy.verificationStatus === "verified" ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-800">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="green">
-              Officine validée et visible des patients
-            </Badge>
-            {pharmacy.verifiedAt ? (
-              <span className="text-[11px] font-medium text-brand-800">
-                Validée {timeAgo(pharmacy.verifiedAt)}
-              </span>
-            ) : null}
-          </div>
-          {pharmacy.licenseNumber ? (
-            <span className="font-mono text-[11px] font-semibold text-brand-800">
-              Agrément : {pharmacy.licenseNumber}
-            </span>
-          ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-800">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="green">Officine active · Visible des patients</Badge>
+          <span className="text-[11px] font-medium text-brand-800">
+            Responsable : {session.managerName}
+          </span>
         </div>
-      ) : pharmacy.verificationStatus === "pending" ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-sun-200 bg-sun-50 px-4 py-3.5 text-xs text-sun-800">
-          <IconAlert className="mt-0.5 h-4 w-4 shrink-0 text-sun-700" />
-          <div>
-            <p className="font-semibold">
-              En attente de validation par l&apos;équipe Kéné
-            </p>
-            <p className="mt-0.5 leading-relaxed">
-              Vous pouvez déjà préparer votre stock ; l&apos;officine deviendra
-              publique dès validation.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-xs text-red-700"
-        >
-          <IconAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-          <div>
-            <p className="font-semibold">Officine suspendue</p>
-            <p className="mt-0.5 leading-relaxed">
-              Votre officine est masquée pour les patients — contactez
-              l&apos;administration Kéné.
-            </p>
-          </div>
-        </div>
-      )}
+        {pharmacy.licenseNumber ? (
+          <span className="font-mono text-[11px] font-semibold text-brand-800">
+            Agrément : {pharmacy.licenseNumber}
+          </span>
+        ) : null}
+      </div>
 
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -531,7 +485,7 @@ export default function PharmacyView() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
             <div className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 sm:justify-start">
               <span className="text-xs font-semibold text-ink-900">
                 De garde 24h/24
@@ -563,6 +517,18 @@ export default function PharmacyView() {
               <IconCheck className="h-4 w-4" />
               Publier mon stock
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                void signOut();
+                notify("Déconnecté de l'espace pharmacie.");
+              }}
+              className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
+            >
+              <IconLogout className="h-4 w-4" />
+              Se déconnecter
+            </button>
           </div>
         </div>
       </Card>
@@ -573,19 +539,28 @@ export default function PharmacyView() {
             label: "Références en stock",
             value: String(overview.inStock.length),
             sub: `sur ${overview.items}`,
-            tone: overview.inStock.length > 0 ? ("green" as const) : ("amber" as const),
+            tone:
+              overview.inStock.length > 0
+                ? ("green" as const)
+                : ("amber" as const),
           },
           {
             label: "Produits en rupture",
             value: String(overview.ruptures.length),
             sub: "indisponibles",
-            tone: overview.ruptures.length > 0 ? ("red" as const) : ("green" as const),
+            tone:
+              overview.ruptures.length > 0
+                ? ("red" as const)
+                : ("green" as const),
           },
           {
             label: "Stock faible",
             value: String(overview.lowStock.length),
             sub: "5 unités ou moins",
-            tone: overview.lowStock.length > 0 ? ("amber" as const) : ("green" as const),
+            tone:
+              overview.lowStock.length > 0
+                ? ("amber" as const)
+                : ("green" as const),
           },
           {
             label: "Dernière mise à jour",
@@ -638,7 +613,7 @@ export default function PharmacyView() {
       <div
         role="tablist"
         aria-label="Sections du back-office pharmacie"
-        className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-card sm:grid-cols-4"
+        className="grid grid-cols-1 gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-card sm:grid-cols-3"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -1321,7 +1296,7 @@ export default function PharmacyView() {
             ) : null}
           </Card>
         </div>
-      ) : activeTab === "profile" ? (
+      ) : (
         <div role="tabpanel">
           <Card className="p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1541,132 +1516,6 @@ export default function PharmacyView() {
                 {nameError ?? hoursError ?? coordsError}
               </p>
             ) : null}
-          </Card>
-        </div>
-      ) : (
-        <div role="tabpanel">
-          <Card className="p-4 sm:p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                  <IconLock className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink-900">
-                    Compte de l&apos;établissement
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {session.managerName} · {session.role}
-                  </p>
-                  <p className="mt-0.5 break-all text-[11px] text-slate-500">
-                    {session.email} · connecté {timeAgo(session.signedInAt)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  await signOut();
-                  notify("Déconnecté du back-office pharmacie.");
-                }}
-                className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
-              >
-                <IconLogout className="h-4 w-4" />
-                Se déconnecter
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <div>
-                <label className="label" htmlFor="pharmacy-current-code">
-                  Code actuel
-                </label>
-                <input
-                  id="pharmacy-current-code"
-                  type="password"
-                  autoComplete="current-password"
-                  className="input"
-                  value={currentCode}
-                  onChange={(event) => {
-                    setCurrentCode(event.target.value);
-                    setCodeError(null);
-                    setCodeSaved(false);
-                  }}
-                />
-              </div>
-              <div>
-                <label className="label" htmlFor="pharmacy-next-code">
-                  Nouveau code (6 à 72 caractères)
-                </label>
-                <input
-                  id="pharmacy-next-code"
-                  type="password"
-                  autoComplete="new-password"
-                  className="input"
-                  value={nextCode}
-                  onChange={(event) => {
-                    setNextCode(event.target.value);
-                    setCodeError(null);
-                    setCodeSaved(false);
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                disabled={codeBusy}
-                onClick={async () => {
-                  if (codeBusy) return;
-                  const trimmedNext = nextCode.trim();
-                  if (trimmedNext.length < 6 || trimmedNext.length > 72) {
-                    setCodeError(
-                      "Le nouveau code doit contenir entre 6 et 72 caractères.",
-                    );
-                    setCodeSaved(false);
-                    return;
-                  }
-                  setCodeBusy(true);
-                  const result = await changeAccessCode(currentCode, nextCode);
-                  setCodeBusy(false);
-                  if (!result.ok) {
-                    setCodeError(result.error ?? "Modification impossible.");
-                    setCodeSaved(false);
-                    return;
-                  }
-                  setCurrentCode("");
-                  setNextCode("");
-                  setCodeError(null);
-                  setCodeSaved(true);
-                  notify("Code d'accès mis à jour.");
-                }}
-                className="btn-primary w-full text-xs sm:w-auto"
-              >
-                <IconCheck className="h-4 w-4" />
-                {codeBusy ? "Enregistrement…" : "Changer le code"}
-              </button>
-            </div>
-
-            {codeError ? (
-              <p
-                role="alert"
-                className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
-              >
-                {codeError}
-              </p>
-            ) : null}
-            {codeSaved ? (
-              <p
-                role="status"
-                className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs font-medium text-brand-800"
-              >
-                Code d&apos;accès enregistré. Utilisez-le à la prochaine
-                connexion.
-              </p>
-            ) : null}
-
-            <p className="mt-4 text-[10px] leading-relaxed text-slate-500">
-              Un seul compte par pharmacie. La session est un cookie HttpOnly
-              valable 8 heures, vérifié côté serveur à chaque modification.
-            </p>
           </Card>
         </div>
       )}

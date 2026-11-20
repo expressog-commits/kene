@@ -1,3 +1,4 @@
+import ThreeHeroScene from "@/components/ThreeHeroScene";
 import {
   IconAlert,
   IconArrowRight,
@@ -34,50 +35,28 @@ import { ensureSeeded, loadPublicState } from "@/lib/server/db";
 
 export const dynamic = "force-dynamic";
 
-const STATS = [
-  { value: "26 %", label: "des ménages face à une rupture de médicament", source: "Afrobarometer" },
-  { value: "54 %", label: "trouvent l'accès aux soins difficile", source: "Afrobarometer" },
-  { value: "30 %", label: "du marché pharmaceutique serait informel", source: "estimation sectorielle" },
-  { value: "10", label: "communes du Grand Abidjan géolocalisées", source: "Kéné" },
-];
-
-const PROBLEMS = [
-  {
-    title: "La rupture, découverte trop tard",
-    body: "Un quart des officines n'a pas le produit demandé le jour même. Le patient apprend la rupture à la caisse, après avoir payé le taxi.",
-  },
-  {
-    title: "Le prix change d'une rue à l'autre",
-    body: "Sans comparateur, une même boîte peut coûter 30 % de plus à 500 mètres. Les familles arbitrent à l'aveugle, faute d'information.",
-  },
-  {
-    title: "Trois pharmacies pour une boîte",
-    body: "Appels, déplacements, files d'attente : trouver un traitement devient une demi-journée perdue, souvent avec un enfant malade.",
-  },
-];
-
 const STEPS = [
   {
-    title: "Cherchez un produit ou une liste",
-    body: "Nom commercial, molécule (DCI) ou jusqu'à 8 médicaments à la fois. Kéné interroge les stocks déclarés par les pharmacies vérifiées.",
+    title: "Tapez le nom du médicament",
+    body: "Recherchez un produit (ex : Paracétamol, Amoxicilline) ou plusieurs médicaments à la fois en quelques secondes.",
   },
   {
-    title: "Comparez distance GPS, stock et prix",
-    body: "Activez « Autour de moi », filtrez par commune, officine ouverte ou de garde 24 h/24, et affichez les résultats sur liste ou carte interactive.",
+    title: "Voyez les pharmacies ouvertes et le prix",
+    body: "Activez « Autour de moi », filtrez les pharmacies de garde 24 h/24 et comparez le stock et le prix affiché sur liste ou carte.",
   },
   {
-    title: "Contactez ou prenez la route",
-    body: "Lancez l'itinéraire Google Maps, appelez l'officine ou confirmez la disponibilité par WhatsApp. Aucune réservation, aucun paiement en ligne.",
+    title: "Lancez l'itinéraire, appelez ou écrivez sur WhatsApp",
+    body: "Ouvrez directement Google Maps, appelez la pharmacie ou envoyez un message WhatsApp avant de vous déplacer.",
   },
 ];
 
 const PHARMACY_FEATURES = [
   "Stock et prix modifiables en quelques secondes",
   "Import CSV / Excel en masse jusqu'à 200 lignes",
-  "Ajout et retrait de références en un clic",
+  "Ajout et retrait de médicaments en un clic",
   "Mise en avant « de garde 24 h/24 » avec note dédiée",
-  "Badge officine vérifiée (numéro d'agrément ONP/DPML)",
-  "Fiche officine, coordonnées GPS et WhatsApp à jour",
+  "Inscription immédiate de votre officine",
+  "Fiche pharmacie, position GPS et WhatsApp à jour",
 ];
 
 const QUICK_LINKS = [
@@ -172,9 +151,6 @@ export default async function LandingPage() {
             <span className="text-lg font-semibold tracking-tight text-ink-900">Kéné</span>
           </a>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <a href="#probleme" className="transition hover:text-ink-900">
-              Le problème
-            </a>
             {FEATURES.hospitals ? (
               <a href="#urgences" className="transition hover:text-ink-900">
                 Urgences
@@ -188,7 +164,7 @@ export default async function LandingPage() {
               Fonctionnement
             </a>
             <a href="#tarifs" className="transition hover:text-ink-900">
-              Pharmacies
+              Modèle économique
             </a>
           </nav>
           <a href="/app?view=search" className="btn-primary px-4 py-2 text-xs sm:text-sm">
@@ -204,13 +180,13 @@ export default async function LandingPage() {
           <GlowOrb className="-right-24 -top-24 h-[26rem] w-[26rem]" tone="brand" />
           <GlowOrb className="-bottom-32 -left-24 h-[22rem] w-[22rem]" tone="sun" />
 
-          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.04fr_0.96fr] lg:py-20">
+          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.04fr_0.96fr] lg:py-16">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-200/70 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-brand-700 backdrop-blur">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
                 {FEATURES.hospitals
-                  ? `Abidjan · ${verified.length} pharmacies vérifiées et ${beds.centers} hôpitaux`
-                  : `Abidjan · ${verified.length} pharmacies vérifiées · ${dutyList.length} de garde`}
+                  ? `Abidjan · ${verified.length} pharmacies et ${beds.centers} hôpitaux`
+                  : `Abidjan · ${verified.length} pharmacies · ${dutyList.length} de garde 24 h/24`}
               </span>
               <h1 className="mt-5 text-[2.45rem] font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-5xl">
                 Votre médicament est en stock.
@@ -221,18 +197,16 @@ export default async function LandingPage() {
               <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
                 {FEATURES.hospitals ? (
                   <>
-                    Kéné montre en quelques secondes quelles pharmacies vérifiées déclarent
-                    avoir votre médicament ou toute votre liste en stock, à quel prix et à
-                    quelle distance GPS. Et quand la situation l&apos;exige, il affiche
-                    les <strong>lits libres aux urgences</strong> des hôpitaux
-                    d&apos;Abidjan.
+                    Trouvez en quelques secondes quelles pharmacies ont votre médicament
+                    en stock, à quel prix et à quelle distance GPS — ainsi que les{" "}
+                    <strong>lits libres aux urgences</strong> des hôpitaux d&apos;Abidjan.
                   </>
                 ) : (
                   <>
-                    Kéné montre en quelques secondes quelles pharmacies vérifiées
-                    d&apos;Abidjan déclarent avoir votre médicament ou toute votre liste
-                    en rayon, à quel prix et à quelle distance GPS — avec accès immédiat
-                    aux <strong>pharmacies de garde 24 h/24</strong> et à la carte.
+                    Trouvez en quelques secondes quelles pharmacies d&apos;Abidjan ont
+                    votre médicament ou toute votre ordonnance en rayon, à quel prix et à
+                    quelle distance GPS — avec accès direct aux{" "}
+                    <strong>pharmacies de garde 24 h/24</strong> et à la carte.
                   </>
                 )}
               </p>
@@ -294,24 +268,24 @@ export default async function LandingPage() {
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
                   <IconCheck className="h-3.5 w-3.5 text-brand-500" />
-                  Gratuit pour les patients
+                  100 % gratuit pour les patients
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <IconList className="h-3.5 w-3.5 text-brand-500" />
-                  Recherche simple ou par liste
+                  Un médicament ou toute une liste
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <IconCrosshair className="h-3.5 w-3.5 text-brand-500" />
-                  GPS, carte &amp; app mobile (PWA)
+                  GPS, carte &amp; app mobile
                 </span>
               </div>
             </div>
 
-            <div className="hero-scene relative">
-              <div className="absolute inset-x-8 top-8 -z-10 h-[92%] rounded-[2rem] bg-gradient-to-br from-brand-300/50 via-brand-100/40 to-sun-200/50 blur-[1px]" />
-              <div className="hero-3d relative">
-                <Capsule3D className="absolute -right-6 -top-10 z-30 h-12 w-24 rotate-[38deg]" />
-                <GlassChip className="float-y absolute -left-5 -top-9 z-30 hidden sm:flex sm:items-center sm:gap-2">
+            <div className="relative">
+              <ThreeHeroScene variant="hero" className="mb-4" />
+
+              <div className="relative rounded-2xl border border-white/70 bg-white/95 p-5 shadow-[0_50px_90px_-40px_rgba(11,31,29,0.55)] backdrop-blur">
+                <GlassChip className="float-y -top-5 right-4 z-20 mb-2 inline-flex items-center gap-2 sm:absolute sm:mb-0">
                   <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500 text-white">
                     <IconPill className="h-3.5 w-3.5" />
                   </span>
@@ -320,156 +294,74 @@ export default async function LandingPage() {
                       {state.medicines.length} médicaments
                     </p>
                     <p className="text-[9px] text-slate-500">
-                      dans {verified.length} pharmacies vérifiées
+                      dans {verified.length} pharmacies
                     </p>
                   </div>
                 </GlassChip>
 
-                <div className="rounded-2xl border border-white/70 bg-white/95 p-5 shadow-[0_50px_90px_-40px_rgba(11,31,29,0.55)] backdrop-blur">
-                  <a
-                    href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-400"
-                  >
-                    <IconSearch className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs text-slate-700">
-                      Artéméther-Luméfantrine 20/120
-                    </span>
-                    <span className="ml-auto rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
-                      {heroMatchCount || verified.length} résultats
-                    </span>
-                  </a>
+                <a
+                  href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-400"
+                >
+                  <IconSearch className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-700">
+                    Artéméther-Luméfantrine 20/120
+                  </span>
+                  <span className="ml-auto rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
+                    {heroMatchCount || verified.length} résultats
+                  </span>
+                </a>
 
-                  <div className="mt-3 space-y-2">
-                    {heroRows.map((row) => (
-                      <a
-                        key={row.id}
-                        href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                        className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-3 transition hover:border-brand-200 hover:bg-slate-50/60"
+                <div className="mt-3 space-y-2">
+                  {heroRows.map((row) => (
+                    <a
+                      key={row.id}
+                      href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-3 transition hover:border-brand-200 hover:bg-slate-50/60"
+                    >
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                          row.tone === "green"
+                            ? "bg-brand-50 text-brand-600"
+                            : row.tone === "amber"
+                              ? "bg-amber-50 text-amber-600"
+                              : "bg-red-50 text-red-500"
+                        }`}
                       >
-                        <span
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                            row.tone === "green"
-                              ? "bg-brand-50 text-brand-600"
-                              : row.tone === "amber"
-                                ? "bg-amber-50 text-amber-600"
-                                : "bg-red-50 text-red-500"
-                          }`}
-                        >
-                          <IconPill className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-ink-900">
-                            {row.name}
-                          </p>
-                          <p className="text-[10px] text-slate-500">{row.area}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold text-ink-900">{row.price}</p>
-                          <p className="text-[10px] text-slate-500">{row.note}</p>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-
-                  <a
-                    href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                    className="mt-4 flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 transition hover:bg-ink-800"
-                  >
-                    <div className="text-white">
-                      <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                        Orientation directe
-                      </p>
-                      <p className="text-xs font-semibold">
-                        Itinéraire GPS · Appel · WhatsApp
-                      </p>
-                    </div>
-                    <span className="rounded-lg bg-brand-400 px-2.5 py-1.5 text-[10px] font-bold text-ink-900">
-                      Sans réservation
-                    </span>
-                  </a>
+                        <IconPill className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-ink-900">
+                          {row.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">{row.area}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-ink-900">{row.price}</p>
+                        <p className="text-[10px] text-slate-500">{row.note}</p>
+                      </div>
+                    </a>
+                  ))}
                 </div>
 
-                <GlassChip className="float-delay absolute -bottom-7 -left-3 z-30 flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-900 text-brand-300">
-                    {FEATURES.hospitals ? (
-                      <IconBed className="h-4 w-4" />
-                    ) : (
-                      <IconClock className="h-4 w-4" />
-                    )}
-                  </span>
-                  <div>
-                    {FEATURES.hospitals ? (
-                      <>
-                        <p className="text-[10px] font-semibold text-ink-900">
-                          {beds.available} lits libres aux urgences
-                        </p>
-                        <p className="text-[9px] text-slate-500">
-                          dans {beds.centers} hôpitaux d&apos;Abidjan
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[10px] font-semibold text-ink-900">
-                          {dutyList.length} pharmacie{dutyList.length > 1 ? "s" : ""} de garde
-                        </p>
-                        <p className="text-[9px] text-slate-500">
-                          ouvertes 24 h/24 à Abidjan
-                        </p>
-                      </>
-                    )}
+                <a
+                  href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
+                  className="mt-4 flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 transition hover:bg-ink-800"
+                >
+                  <div className="text-white">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                      Contact direct
+                    </p>
+                    <p className="text-xs font-semibold">
+                      Itinéraire GPS · Appel · WhatsApp
+                    </p>
                   </div>
-                </GlassChip>
+                  <span className="rounded-lg bg-brand-400 px-2.5 py-1.5 text-[10px] font-bold text-ink-900">
+                    Accès immédiat
+                  </span>
+                </a>
               </div>
-              <p className="mt-8 text-center text-[10px] text-slate-500 lg:mt-6">
-                Stocks et prix déclarés en base par les officines vérifiées
-              </p>
             </div>
-          </div>
-        </section>
-
-        <section className="bg-ink-900">
-          <div className="mx-auto grid w-full max-w-6xl gap-6 px-5 py-10 sm:grid-cols-2 lg:grid-cols-4">
-            {STATS.map((stat) => (
-              <div key={stat.value}>
-                <p className="text-3xl font-semibold tracking-tight text-white">
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">{stat.label}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-600">
-                  {stat.source}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="probleme" className="mx-auto w-full max-w-6xl px-5 py-16">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-              Le problème
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-900">
-              Le médicament existe. Le trouver est le vrai problème.
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              En Côte d&apos;Ivoire, la santé est le deuxième sujet de préoccupation des
-              ménages. Le système distribue mal : les officines du Plateau ne savent pas ce
-              qui manque à Yopougon, et les patients paient chaque détour.
-            </p>
-          </div>
-
-          <div className="mt-9 grid gap-4 md:grid-cols-3">
-            {PROBLEMS.map((problem, index) => (
-              <div key={problem.title} className="card card-lift p-6">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sand text-xs font-bold text-brand-700">
-                  0{index + 1}
-                </span>
-                <h3 className="mt-4 text-sm font-semibold text-ink-900">{problem.title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  {problem.body}
-                </p>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -481,7 +373,7 @@ export default async function LandingPage() {
                   Fonctionnement
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-900">
-                  Trois gestes, pas trois déplacements.
+                  Simple et rapide pour tout le monde.
                 </h2>
               </div>
               <a
@@ -499,8 +391,8 @@ export default async function LandingPage() {
                   key={step.title}
                   className="rounded-2xl bg-sand p-6 transition hover:shadow-card"
                 >
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    Étape {index + 1}
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-brand-700">
+                    {index + 1}.
                   </span>
                   <h3 className="mt-2 text-sm font-semibold text-ink-900">{step.title}</h3>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">{step.body}</p>
@@ -521,14 +413,14 @@ export default async function LandingPage() {
                   text: "Visualisez les officines disponibles et de garde autour de vous.",
                 },
                 {
-                  icon: IconShield,
-                  label: "Officines vérifiées",
-                  text: "Agrément contrôlé avant mise en ligne des stocks déclarés.",
+                  icon: IconClock,
+                  label: "Garde 24 h/24",
+                  text: "Trouvez immédiatement la pharmacie ouverte la nuit et le week-end.",
                 },
                 {
                   icon: IconDownload,
                   label: "Installable sur mobile",
-                  text: "PWA légère consultable même avec une connexion instable.",
+                  text: "Application légère consultable même avec une connexion instable.",
                 },
               ].map((item) => {
                 const Icon = item.icon;
@@ -568,8 +460,7 @@ export default async function LandingPage() {
                   <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
                     Aux heures où chaque minute compte, savoir quel service d&apos;urgence
                     a de la place change tout. Kéné affiche les lits libres par hôpital et
-                    par service — adultes, pédiatrie, maternité, réanimation,
-                    traumatologie — avec le temps d&apos;attente estimé.
+                    par service avec le temps d&apos;attente estimé.
                   </p>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -613,17 +504,6 @@ export default async function LandingPage() {
 
                 <div>
                   <BedGrid3D className="h-64" />
-                  <div className="mt-2 flex flex-wrap justify-center gap-3 text-[10px] text-slate-400">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-brand-400" /> libre
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-sun-400" /> tension
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-500" /> occupé
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -644,8 +524,8 @@ export default async function LandingPage() {
                     Pharmacies de garde, la nuit comme le week-end.
                   </h2>
                   <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-                    Retrouvez immédiatement les officines vérifiées signalées de garde,
-                    vérifiez leurs médicaments en stock et lancez l&apos;itinéraire GPS ou
+                    Retrouvez immédiatement les pharmacies signalées de garde, vérifiez
+                    leurs médicaments en stock et lancez l&apos;itinéraire GPS ou
                     l&apos;appel en un geste.
                   </p>
 
@@ -725,7 +605,7 @@ export default async function LandingPage() {
         )}
 
         <section id="pharmacies" className="mx-auto w-full max-w-6xl px-5 pb-16">
-          <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr]">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
                 Pour les pharmacies
@@ -734,11 +614,9 @@ export default async function LandingPage() {
                 Votre stock devient votre vitrine.
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
-                Kéné n&apos;est pas un site de vente et ne prend pas de réservation.
-                C&apos;est un outil d&apos;orientation pensé pour une officine de quartier :
-                le pharmacien importe ou actualise son stock en quelques secondes, publie
-                ses gardes et accueille des patients qui savent déjà que le produit est
-                disponible.
+                Un espace simple, pensé pour une officine de quartier : importez ou mettez
+                à jour votre stock en quelques secondes, signalez vos gardes 24 h/24 et
+                orientez les patients vers votre comptoir.
               </p>
               <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
                 {PHARMACY_FEATURES.map((feature) => (
@@ -748,40 +626,54 @@ export default async function LandingPage() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-6">
+                <a href="/app?view=pharmacy" className="btn-primary text-xs">
+                  <IconPharmacy className="h-4 w-4" />
+                  Accéder à l&apos;espace pharmacie
+                </a>
+              </div>
             </div>
 
-            <div id="tarifs" className="card border-brand-500 p-6 ring-1 ring-brand-200">
-              <div className="flex items-center justify-between">
-                <span className="chip bg-brand-50 text-brand-700">Pharmacie Pro</span>
-                <span className="text-[11px] text-slate-500">sans engagement</span>
+            <div id="tarifs" className="space-y-4">
+              <div className="card border-brand-500 p-6 ring-1 ring-brand-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="chip bg-brand-50 text-brand-700">
+                    Étape 1 · Aujourd&apos;hui
+                  </span>
+                  <span className="text-[11px] font-semibold text-brand-700">
+                    Accès 100 % gratuit
+                  </span>
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-ink-900">
+                  Financé par la Publicité &amp; les Partenariats Santé
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                  L&apos;application est 100 % gratuite pour les patients et
+                  l&apos;inscription est gratuite pour toutes les pharmacies partenaires.
+                  Durant cette phase de croissance, Kéné se finance grâce aux espaces
+                  publicitaires dédiés aux acteurs de la santé et de la parapharmacie.
+                </p>
               </div>
-              <p className="mt-5 text-3xl font-semibold tracking-tight text-ink-900">
-                25 000 FCFA
-                <span className="text-xs font-normal text-slate-400"> / mois</span>
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                Par officine vérifiée. Import CSV en masse, stock en temps réel, mise en
-                avant de garde et contact WhatsApp direct. Réglé par Wave ou Orange Money.
-              </p>
-              <div className="mt-5 space-y-2 border-t border-slate-100 pt-4">
-                {[
-                  "Les patients ne paient rien, jamais",
-                  "Aucune commission sur les passages au comptoir",
-                  "Vérification de l'officine et prise en main incluses",
-                ].map((line) => (
-                  <p key={line} className="flex items-center gap-2 text-xs text-slate-600">
-                    <IconCheck className="h-3.5 w-3.5 text-brand-500" />
-                    {line}
-                  </p>
-                ))}
+
+              <div className="card p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="chip bg-sun-50 text-sun-800">
+                    Étape 2 · Demain
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Une fois devenue la référence
+                  </span>
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-ink-900">
+                  Abonnement Pharmacie
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                  Lorsque Kéné sera devenue la plateforme de référence au quotidien pour
+                  les patients, les pharmacies paieront un tarif d&apos;abonnement pour la
+                  visibilité en temps réel de leur stock, la mise en avant de garde et les
+                  outils de gestion avancés.
+                </p>
               </div>
-              <a href="/app?view=pharmacy" className="btn-primary mt-6 w-full text-xs">
-                Voir le back-office
-              </a>
-              <p className="mt-2 text-center text-[10px] text-slate-400">
-                Démo avec {verified.length} pharmacies vérifiées et{" "}
-                {state.medicines.length} médicaments
-              </p>
             </div>
           </div>
         </section>
@@ -794,12 +686,11 @@ export default async function LandingPage() {
                   Cadre clair
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink-900">
-                  Ce que Kéné n&apos;est pas.
+                  Information et orientation uniquement.
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Un outil strict d&apos;information et d&apos;orientation, jamais un acte
-                  médical. Kéné n&apos;appartient pas au corps médical : cette limite est
-                  volontaire et protège les patients comme les officines.
+                  Kéné indique où trouver votre médicament et quelle pharmacie est ouverte,
+                  sans jamais remplacer votre médecin ni votre pharmacien.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -840,11 +731,11 @@ export default async function LandingPage() {
               Abidjan, maintenant
             </p>
             <h2 className="relative mx-auto mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white">
-              Arrêtez de chercher. Commencez par savoir.
+              Trouvez votre médicament maintenant.
             </h2>
             <p className="relative mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-              Ouvrez l&apos;application installable, trouvez votre médicament, comparez
-              toute une liste ou localisez la pharmacie de garde la plus proche.
+              Recherchez un produit, comparez toute une ordonnance ou localisez la
+              pharmacie de garde la plus proche.
             </p>
             <div className="relative mt-7 flex flex-wrap justify-center gap-3">
               <a
@@ -880,7 +771,7 @@ export default async function LandingPage() {
             <div>
               <p className="text-sm font-semibold text-ink-900">Kéné</p>
               <p className="text-[11px] text-slate-500">
-                Orientation pharmacie et garde 24 h/24 · Abidjan
+                Disponibilité en pharmacie et garde 24 h/24 · Abidjan
               </p>
             </div>
           </div>
@@ -892,9 +783,9 @@ export default async function LandingPage() {
               De garde
             </a>
             <a href="#tarifs" className="hover:text-ink-900">
-              Tarifs pharmacies
+              Modèle économique
             </a>
-            <span>Données de démonstration, aucune réservation ni vente</span>
+            <span>Orientation gratuite · aucune vente en ligne</span>
           </div>
         </div>
       </footer>

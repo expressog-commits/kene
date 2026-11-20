@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ThreeHeroScene from "@/components/ThreeHeroScene";
 import { useStore } from "../store";
 import { Badge, Card, cn } from "../ui";
 import PharmacyMap, { type PharmacyMapMarker } from "../PharmacyMap";
 import {
   IconAlert,
-  IconArrowRight,
   IconCheck,
   IconChevronRight,
   IconClock,
@@ -20,6 +20,7 @@ import {
   IconPill,
   IconPlus,
   IconSearch,
+  IconShield,
   IconStar,
   IconWhatsApp,
 } from "../icons";
@@ -84,7 +85,6 @@ export default function Search({
   const [query, setQuery] = useState("");
   const [listQuery, setListQuery] = useState("");
   const [selectedMedicineIds, setSelectedMedicineIds] = useState<string[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedPharmacyIds, setExpandedPharmacyIds] = useState<string[]>([]);
 
   const visiblePharmacies = useMemo(() => publicPharmacies(state), [state]);
@@ -116,17 +116,8 @@ export default function Search({
     onConsumeInitialQuery?.();
   }, [initialQuery, addRecentSearch, onConsumeInitialQuery]);
 
-  const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyDuty, setOnlyDuty] = useState(false);
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [sort, setSort] = useState<"distance" | "price" | "freshness">("distance");
-
-  useEffect(() => {
-    if (favoritePharmacyIds.length === 0 && onlyFavorites) {
-      setOnlyFavorites(false);
-    }
-  }, [favoritePharmacyIds.length, onlyFavorites]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -155,14 +146,30 @@ export default function Search({
   }, [mode]);
 
   const filters: SearchFilters = useMemo(
-    () => ({ quartier, onlyOpen, onlyDuty, onlyInStock, sort }),
-    [quartier, onlyOpen, onlyDuty, onlyInStock, sort],
+    () => ({
+      quartier,
+      onlyOpen,
+      onlyDuty,
+      onlyInStock: false,
+      sort: "distance",
+    }),
+    [quartier, onlyOpen, onlyDuty],
   );
 
-  const activeAdvancedCount =
-    (onlyInStock ? 1 : 0) +
-    (onlyFavorites ? 1 : 0) +
-    (sort !== "distance" ? 1 : 0);
+  const hasActiveFilters =
+    Boolean(userLocation) ||
+    onlyDuty ||
+    onlyOpen ||
+    quartier !== "Tous" ||
+    Boolean(query.trim());
+
+  const resetAllFilters = () => {
+    setQuery("");
+    setQuartier("Tous");
+    setOnlyDuty(false);
+    setOnlyOpen(false);
+    if (userLocation) clearLocation();
+  };
 
   const inStockByPharmacy = useMemo(() => {
     const medicineById = new Map(state.medicines.map((item) => [item.id, item]));
@@ -188,11 +195,6 @@ export default function Search({
         const open = isOpen(pharmacy);
         if (onlyOpen && !open) return false;
         if (onlyDuty && !pharmacy.onDuty) return false;
-        if (onlyFavorites && !favoritePharmacyIds.includes(pharmacy.id)) {
-          return false;
-        }
-        const items = inStockByPharmacy.get(pharmacy.id) ?? [];
-        if (onlyInStock && items.length === 0) return false;
         return true;
       })
       .map((pharmacy) => {
@@ -225,9 +227,6 @@ export default function Search({
     quartier,
     onlyOpen,
     onlyDuty,
-    onlyFavorites,
-    onlyInStock,
-    favoritePharmacyIds,
     inStockByPharmacy,
     userLocation,
   ]);
@@ -249,11 +248,10 @@ export default function Search({
     [nearbyPharmacies],
   );
 
-  const rows = useMemo(() => {
-    const found = searchMedicine(state, query, filters, userLocation);
-    if (!onlyFavorites) return found;
-    return found.filter((row) => favoritePharmacyIds.includes(row.pharmacy.id));
-  }, [state, query, filters, userLocation, onlyFavorites, favoritePharmacyIds]);
+  const rows = useMemo(
+    () => searchMedicine(state, query, filters, userLocation),
+    [state, query, filters, userLocation],
+  );
 
   const suggestions = useMemo(
     () => (query.trim() ? suggestMedicines(state, query, 6) : []),
@@ -277,22 +275,8 @@ export default function Search({
 
   const listResults = useMemo(() => {
     if (selectedMedicineIds.length === 0) return [];
-    const found = searchMedicineList(
-      state,
-      selectedMedicineIds,
-      filters,
-      userLocation,
-    );
-    if (!onlyFavorites) return found;
-    return found.filter((row) => favoritePharmacyIds.includes(row.pharmacy.id));
-  }, [
-    state,
-    selectedMedicineIds,
-    filters,
-    userLocation,
-    onlyFavorites,
-    favoritePharmacyIds,
-  ]);
+    return searchMedicineList(state, selectedMedicineIds, filters, userLocation);
+  }, [state, selectedMedicineIds, filters, userLocation]);
 
   const singleMapMarkers = useMemo<PharmacyMapMarker[]>(() => {
     const seen = new Map<string, { marker: PharmacyMapMarker; count: number }>();
@@ -407,357 +391,362 @@ export default function Search({
   return (
     <div className="space-y-5">
       <Card className="p-5">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid items-center gap-5 lg:grid-cols-[1.35fr_0.65fr]">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-ink-900">
-              Quel médicament cherchez-vous ?
-            </h2>
-            <p className="text-xs text-slate-500">
-              Stocks, prix et officines vérifiées autour de vous en Côte d&apos;Ivoire.
-            </p>
-          </div>
-
-          <div
-            role="tablist"
-            aria-label="Mode de recherche"
-            className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold sm:w-auto"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "single"}
-              onClick={() => setMode("single")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
-                mode === "single"
-                  ? "bg-white text-ink-900 shadow-sm"
-                  : "text-slate-500 hover:text-ink-900",
-              )}
-            >
-              <IconSearch className="h-3.5 w-3.5" />
-              <span>Un médicament</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "list"}
-              onClick={() => setMode("list")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
-                mode === "list"
-                  ? "bg-white text-ink-900 shadow-sm"
-                  : "text-slate-500 hover:text-ink-900",
-              )}
-            >
-              <IconList className="h-3.5 w-3.5" />
-              <span>Mon ordonnance</span>
-              {selectedMedicineIds.length > 0 ? (
-                <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {selectedMedicineIds.length}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        </div>
-
-        {mode === "single" ? (
-          <>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (query.trim()) addRecentSearch(query);
-              }}
-              className="relative"
-            >
-              <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-              <input
-                ref={inputRef}
-                type="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                aria-label="Rechercher un médicament"
-                aria-describedby="search-shortcut"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onBlur={() => {
-                  if (suppressBlurRef.current) {
-                    suppressBlurRef.current = false;
-                    return;
-                  }
-                  if (query.trim().length >= 2) addRecentSearch(query);
-                }}
-                placeholder="Paracétamol, amoxicilline, artéméther, sirop…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-20 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    inputRef.current?.focus();
-                  }}
-                  aria-label="Effacer la recherche"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-ink-900 sm:right-10"
-                >
-                  <IconClose className="h-4 w-4" />
-                </button>
-              ) : null}
-              <span id="search-shortcut" className="sr-only">
-                Appuyez sur la barre oblique pour revenir à ce champ depuis n&apos;importe
-                quelle page.
-              </span>
-              <kbd
-                aria-hidden="true"
-                className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:block"
-              >
-                /
-              </kbd>
-            </form>
-
-            {suggestions.length > 0 ? (
-              <div
-                onMouseDown={() => {
-                  suppressBlurRef.current = true;
-                }}
-                className="mt-2.5 flex flex-wrap items-center gap-1.5"
-              >
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Correspondances :
-                </span>
-                {suggestions.map((medicine) => {
-                  const inList = selectedMedicineIds.includes(medicine.id);
-                  return (
-                    <div
-                      key={medicine.id}
-                      className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white text-[11px]"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuery(medicine.name);
-                          addRecentSearch(medicine.name);
-                        }}
-                        className="px-2.5 py-1 font-medium text-ink-900 transition hover:bg-slate-50"
-                      >
-                        {medicine.name}{" "}
-                        <span className="text-slate-500">· {medicine.dci}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => addMedicineToList(medicine.id)}
-                        aria-label={`Ajouter ${medicine.name} à ma liste`}
-                        className={cn(
-                          "border-l border-slate-200 px-2 py-1 text-[10px] font-semibold transition",
-                          inList
-                            ? "bg-brand-50 text-brand-700"
-                            : "text-brand-700 hover:bg-brand-50",
-                        )}
-                      >
-                        {inList ? "Dans la liste" : "+ Liste"}
-                      </button>
-                    </div>
-                  );
-                })}
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold tracking-tight text-ink-900">
+                  Quel médicament cherchez-vous ?
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Trouvez en quelques secondes les pharmacies ouvertes et le prix.
+                </p>
               </div>
-            ) : null}
 
-            <div
-              onMouseDown={() => {
-                suppressBlurRef.current = true;
-              }}
-              className="mt-3 flex flex-wrap gap-1.5"
-            >
-              {QUICK_SEARCHES.map((term) => (
+              <div
+                role="tablist"
+                aria-label="Mode de recherche"
+                className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold sm:w-auto"
+              >
                 <button
-                  key={term}
                   type="button"
-                  onClick={() => {
-                    const next = term === query ? "" : term;
-                    setQuery(next);
-                    if (next) addRecentSearch(next);
-                  }}
-                  aria-pressed={query === term}
+                  role="tab"
+                  aria-selected={mode === "single"}
+                  onClick={() => setMode("single")}
                   className={cn(
-                    "rounded-full px-3 py-1 text-[11px] font-semibold transition",
-                    query === term
-                      ? "bg-ink-900 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                    "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
+                    mode === "single"
+                      ? "bg-white text-ink-900 shadow-sm"
+                      : "text-slate-500 hover:text-ink-900",
                   )}
                 >
-                  {term}
+                  <IconSearch className="h-3.5 w-3.5" />
+                  <span>Un médicament</span>
                 </button>
-              ))}
-            </div>
-
-            {recentSearches.length > 0 ? (
-              <div
-                onMouseDown={() => {
-                  suppressBlurRef.current = true;
-                }}
-                className="mt-2.5 flex flex-wrap items-center gap-1.5"
-              >
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Récentes :
-                </span>
-                {recentSearches.map((term) => (
-                  <button
-                    key={term}
-                    type="button"
-                    onClick={() => {
-                      setQuery(term);
-                      addRecentSearch(term);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-800 transition hover:bg-brand-100"
-                  >
-                    <IconClock className="h-3 w-3" />
-                    {term}
-                  </button>
-                ))}
                 <button
                   type="button"
-                  onClick={clearRecentSearches}
-                  className="px-1.5 py-1 text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-ink-900 hover:underline"
+                  role="tab"
+                  aria-selected={mode === "list"}
+                  onClick={() => setMode("list")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition",
+                    mode === "list"
+                      ? "bg-white text-ink-900 shadow-sm"
+                      : "text-slate-500 hover:text-ink-900",
+                  )}
                 >
-                  Effacer
+                  <IconList className="h-3.5 w-3.5" />
+                  <span>Mon ordonnance</span>
+                  {selectedMedicineIds.length > 0 ? (
+                    <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {selectedMedicineIds.length}
+                    </span>
+                  ) : null}
                 </button>
               </div>
-            ) : null}
-          </>
-        ) : (
-          <div className="space-y-3">
-            <div className="rounded-xl border border-brand-200/70 bg-brand-50/70 px-3.5 py-2.5 text-[11px] leading-relaxed text-brand-900">
-              Kéné n&apos;analyse pas d&apos;ordonnance et ne réserve aucun médicament :
-              cet outil vérifie uniquement quelles pharmacies déclarent disposer de tous
-              vos produits.
             </div>
 
-            <div className="relative">
-              <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-              <input
-                ref={listInputRef}
-                type="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                aria-label="Ajouter un médicament à la liste"
-                value={listQuery}
-                onChange={(event) => setListQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    listQuery.trim() &&
-                    listSuggestions[0] &&
-                    !selectedMedicineIds.includes(listSuggestions[0].id)
-                  ) {
+            {mode === "single" ? (
+              <>
+                <form
+                  onSubmit={(event) => {
                     event.preventDefault();
-                    addMedicineToList(listSuggestions[0].id);
-                    setListQuery("");
-                  }
-                }}
-                placeholder="Ajouter 2 à 8 médicaments (nom, DCI ou forme)…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-12 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
-              />
-              <kbd
-                aria-hidden="true"
-                className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:block"
-              >
-                /
-              </kbd>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                {listQuery.trim() ? "Ajouter :" : "Ajouts rapides :"}
-              </span>
-              {listSuggestions.map((medicine) => {
-                const selected = selectedMedicineIds.includes(medicine.id);
-                const full = selectedMedicineIds.length >= MAX_LIST_ITEMS;
-                return (
-                  <button
-                    key={medicine.id}
-                    type="button"
-                    disabled={selected || full}
-                    onClick={() => {
-                      addMedicineToList(medicine.id);
-                      setListQuery("");
+                    if (query.trim()) addRecentSearch(query);
+                  }}
+                  className="relative"
+                >
+                  <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    ref={inputRef}
+                    type="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    aria-label="Rechercher un médicament"
+                    aria-describedby="search-shortcut"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onBlur={() => {
+                      if (suppressBlurRef.current) {
+                        suppressBlurRef.current = false;
+                        return;
+                      }
+                      if (query.trim().length >= 2) addRecentSearch(query);
                     }}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
-                      selected
-                        ? "border-brand-200 bg-brand-50 text-brand-700 opacity-75"
-                        : "border-slate-200 bg-white text-ink-900 hover:border-brand-300 hover:bg-brand-50/50 disabled:opacity-50",
-                    )}
-                  >
-                    {selected ? (
-                      <IconCheck className="h-3 w-3 text-brand-600" />
-                    ) : (
-                      <IconPlus className="h-3 w-3 text-brand-600" />
-                    )}
-                    <span>{medicine.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Votre liste ({selectedMedicines.length}/{MAX_LIST_ITEMS} médicaments)
-                </p>
-                {selectedMedicines.length > 0 ? (
-                  <div className="flex items-center gap-3">
+                    placeholder="Paracétamol, amoxicilline, artéméther, sirop…"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-20 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                  />
+                  {query ? (
                     <button
                       type="button"
-                      onClick={copySelectedList}
-                      className="text-[11px] font-semibold text-brand-700 underline-offset-2 hover:underline"
+                      onClick={() => {
+                        setQuery("");
+                        inputRef.current?.focus();
+                      }}
+                      aria-label="Effacer la recherche"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-ink-900 sm:right-10"
                     >
-                      Copier ma liste
+                      <IconClose className="h-4 w-4" />
                     </button>
+                  ) : null}
+                  <span id="search-shortcut" className="sr-only">
+                    Appuyez sur la barre oblique pour revenir à ce champ depuis
+                    n&apos;importe quelle page.
+                  </span>
+                  <kbd
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:block"
+                  >
+                    /
+                  </kbd>
+                </form>
+
+                {suggestions.length > 0 ? (
+                  <div
+                    onMouseDown={() => {
+                      suppressBlurRef.current = true;
+                    }}
+                    className="mt-2.5 flex flex-wrap items-center gap-1.5"
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Correspondances :
+                    </span>
+                    {suggestions.map((medicine) => {
+                      const inList = selectedMedicineIds.includes(medicine.id);
+                      return (
+                        <div
+                          key={medicine.id}
+                          className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white text-[11px]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuery(medicine.name);
+                              addRecentSearch(medicine.name);
+                            }}
+                            className="px-2.5 py-1 font-medium text-ink-900 transition hover:bg-slate-50"
+                          >
+                            {medicine.name}{" "}
+                            <span className="text-slate-500">· {medicine.dci}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addMedicineToList(medicine.id)}
+                            aria-label={`Ajouter ${medicine.name} à ma liste`}
+                            className={cn(
+                              "border-l border-slate-200 px-2 py-1 text-[10px] font-semibold transition",
+                              inList
+                                ? "bg-brand-50 text-brand-700"
+                                : "text-brand-700 hover:bg-brand-50",
+                            )}
+                          >
+                            {inList ? "Dans la liste" : "+ Liste"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div
+                  onMouseDown={() => {
+                    suppressBlurRef.current = true;
+                  }}
+                  className="mt-3 flex flex-wrap gap-1.5"
+                >
+                  {QUICK_SEARCHES.map((term) => (
+                    <button
+                      key={term}
+                      type="button"
+                      onClick={() => {
+                        const next = term === query ? "" : term;
+                        setQuery(next);
+                        if (next) addRecentSearch(next);
+                      }}
+                      aria-pressed={query === term}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                        query === term
+                          ? "bg-ink-900 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                      )}
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+
+                {recentSearches.length > 0 ? (
+                  <div
+                    onMouseDown={() => {
+                      suppressBlurRef.current = true;
+                    }}
+                    className="mt-2.5 flex flex-wrap items-center gap-1.5"
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Récentes :
+                    </span>
+                    {recentSearches.map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        onClick={() => {
+                          setQuery(term);
+                          addRecentSearch(term);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-800 transition hover:bg-brand-100"
+                      >
+                        <IconClock className="h-3 w-3" />
+                        {term}
+                      </button>
+                    ))}
                     <button
                       type="button"
-                      onClick={() => setSelectedMedicineIds([])}
-                      className="text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-red-600 hover:underline"
+                      onClick={clearRecentSearches}
+                      className="px-1.5 py-1 text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-ink-900 hover:underline"
                     >
-                      Vider
+                      Effacer
                     </button>
                   </div>
                 ) : null}
-              </div>
-
-              {selectedMedicines.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  Sélectionnez entre 2 et 8 médicaments ci-dessus pour comparer les
-                  pharmacies capables de fournir toute votre liste en une seule course.
-                </p>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {selectedMedicines.map((medicine) => (
-                    <span
-                      key={medicine.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1 text-[11px] font-semibold text-white"
-                    >
-                      <span>{medicine.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeMedicineFromList(medicine.id)}
-                        aria-label={`Retirer ${medicine.name}`}
-                        className="rounded-full p-0.5 text-slate-300 transition hover:bg-white/15 hover:text-white"
-                      >
-                        <IconClose className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-brand-200/70 bg-brand-50/70 px-3.5 py-2.5 text-[11px] leading-relaxed text-brand-900">
+                  Ajoutez les médicaments de votre ordonnance pour voir quelles
+                  pharmacies disposent de tous vos produits en une seule course.
                 </div>
-              )}
 
-              {selectedMedicines.length === 1 ? (
-                <p className="mt-2 text-[11px] font-medium text-sun-700">
-                  Ajoutez encore au moins 1 médicament (2 à 8 recommandés) pour comparer
-                  une liste complète.
-                </p>
-              ) : null}
-            </div>
+                <div className="relative">
+                  <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    ref={listInputRef}
+                    type="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    aria-label="Ajouter un médicament à la liste"
+                    value={listQuery}
+                    onChange={(event) => setListQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        listQuery.trim() &&
+                        listSuggestions[0] &&
+                        !selectedMedicineIds.includes(listSuggestions[0].id)
+                      ) {
+                        event.preventDefault();
+                        addMedicineToList(listSuggestions[0].id);
+                        setListQuery("");
+                      }
+                    }}
+                    placeholder="Ajouter 2 à 8 médicaments (nom, DCI ou forme)…"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-12 pr-12 text-sm text-ink-900 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                  />
+                  <kbd
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:block"
+                  >
+                    /
+                  </kbd>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    {listQuery.trim() ? "Ajouter :" : "Ajouts rapides :"}
+                  </span>
+                  {listSuggestions.map((medicine) => {
+                    const selected = selectedMedicineIds.includes(medicine.id);
+                    const full = selectedMedicineIds.length >= MAX_LIST_ITEMS;
+                    return (
+                      <button
+                        key={medicine.id}
+                        type="button"
+                        disabled={selected || full}
+                        onClick={() => {
+                          addMedicineToList(medicine.id);
+                          setListQuery("");
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+                          selected
+                            ? "border-brand-200 bg-brand-50 text-brand-700 opacity-75"
+                            : "border-slate-200 bg-white text-ink-900 hover:border-brand-300 hover:bg-brand-50/50 disabled:opacity-50",
+                        )}
+                      >
+                        {selected ? (
+                          <IconCheck className="h-3 w-3 text-brand-600" />
+                        ) : (
+                          <IconPlus className="h-3 w-3 text-brand-600" />
+                        )}
+                        <span>{medicine.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Votre liste ({selectedMedicines.length}/{MAX_LIST_ITEMS} médicaments)
+                    </p>
+                    {selectedMedicines.length > 0 ? (
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={copySelectedList}
+                          className="text-[11px] font-semibold text-brand-700 underline-offset-2 hover:underline"
+                        >
+                          Copier ma liste
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMedicineIds([])}
+                          className="text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-red-600 hover:underline"
+                        >
+                          Vider
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {selectedMedicines.length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Sélectionnez entre 2 et 8 médicaments ci-dessus pour comparer les
+                      pharmacies capables de fournir toute votre liste.
+                    </p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedMedicines.map((medicine) => (
+                        <span
+                          key={medicine.id}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1 text-[11px] font-semibold text-white"
+                        >
+                          <span>{medicine.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeMedicineFromList(medicine.id)}
+                            aria-label={`Retirer ${medicine.name}`}
+                            className="rounded-full p-0.5 text-slate-300 transition hover:bg-white/15 hover:text-white"
+                          >
+                            <IconClose className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedMedicines.length === 1 ? (
+                    <p className="mt-2 text-[11px] font-medium text-sun-700">
+                      Ajoutez encore au moins 1 médicament (2 à 8 recommandés) pour
+                      comparer une liste complète.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+          <ThreeHeroScene variant="banner" />
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
           {userLocation ? (
@@ -776,10 +765,7 @@ export default function Search({
           ) : (
             <button
               type="button"
-              onClick={() => {
-                requestLocation();
-                setSort("distance");
-              }}
+              onClick={requestLocation}
               disabled={locationStatus === "locating"}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-ink-900 transition hover:border-brand-400 hover:bg-brand-50/40 disabled:opacity-60"
             >
@@ -813,7 +799,7 @@ export default function Search({
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            Ouvertes
+            Ouvertes maintenant
           </button>
 
           <select
@@ -829,76 +815,16 @@ export default function Search({
             ))}
           </select>
 
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((value) => !value)}
-            aria-expanded={filtersOpen}
-            className={cn(
-              "ml-auto inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition",
-              filtersOpen || activeAdvancedCount > 0
-                ? "border-brand-400 bg-brand-50/70 text-brand-800"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-            )}
-          >
-            <span>Filtres</span>
-            {activeAdvancedCount > 0 ? (
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
-                {activeAdvancedCount}
-              </span>
-            ) : null}
-          </button>
-        </div>
-
-        {filtersOpen ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
+          {hasActiveFilters ? (
             <button
               type="button"
-              onClick={() => setOnlyInStock((value) => !value)}
-              aria-pressed={onlyInStock}
-              className={cn(
-                "rounded-xl border px-3 py-1.5 text-xs font-medium transition",
-                onlyInStock
-                  ? "border-brand-500 bg-brand-50 text-brand-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-              )}
+              onClick={resetAllFilters}
+              className="ml-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-ink-900"
             >
-              En stock seulement
+              Réinitialiser
             </button>
-
-            {favoritePharmacyIds.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setOnlyFavorites((value) => !value)}
-                aria-pressed={onlyFavorites}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition",
-                  onlyFavorites
-                    ? "border-sun-400 bg-sun-50 text-sun-800"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-                )}
-              >
-                <IconStar filled={onlyFavorites} className="h-3.5 w-3.5 text-sun-500" />
-                Mes favorites
-              </button>
-            ) : null}
-
-            <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-              <span>Tri</span>
-              <select
-                aria-label="Trier les résultats"
-                value={sort}
-                onChange={(event) =>
-                  setSort(event.target.value as "distance" | "price" | "freshness")
-                }
-                className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 focus:border-brand-400 focus:outline-none"
-              >
-                <option value="distance">Distance</option>
-                <option value="price">Prix</option>
-                <option value="freshness">Mise à jour récente</option>
-              </select>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </Card>
 
       {mode === "single" ? (
@@ -964,8 +890,8 @@ export default function Search({
                   Aucune pharmacie ne correspond à votre recherche
                 </p>
                 <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-                  Essayez le nom de la molécule (DCI), élargissez le quartier, désactivez
-                  un filtre ou contactez la pharmacie de garde.
+                  Essayez le nom de la molécule (DCI), élargissez la commune ou contactez
+                  directement une pharmacie de garde.
                 </p>
               </Card>
             ) : display === "map" ? (
@@ -1148,10 +1074,10 @@ export default function Search({
               {nearbyPharmacies.length === 0 ? (
                 <Card className="p-8 text-center">
                   <p className="text-sm font-medium text-ink-900">
-                    Aucune pharmacie vérifiée pour ces filtres
+                    Aucune pharmacie pour ces filtres
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Élargissez la commune ou désactivez un filtre ci-dessus.
+                    Élargissez la commune ou réinitialisez les filtres ci-dessus.
                   </p>
                 </Card>
               ) : display === "map" ? (
@@ -1217,7 +1143,7 @@ export default function Search({
                                   {inStockItems.length} produits
                                 </p>
                                 <p className="text-[10px] text-slate-500">
-                                  {latestUpdate ? timeAgo(latestUpdate) : "vérifiée"}
+                                  {latestUpdate ? timeAgo(latestUpdate) : "en stock"}
                                 </p>
                               </div>
                             </div>
@@ -1338,9 +1264,45 @@ export default function Search({
               )}
             </div>
 
+            <Card className="border-brand-200/80 bg-gradient-to-r from-brand-50/70 via-white to-sun-50/60 p-4 sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white">
+                    <IconShield className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="amber">Publicité · Partenaire Santé</Badge>
+                      <span className="text-[11px] font-medium text-slate-500">
+                        Espace Publicitaire · Partenaire Santé
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-ink-900">
+                      Prévention Paludisme &amp; Hydratation en Côte d&apos;Ivoire
+                    </p>
+                    <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-slate-600">
+                      Retrouvez les tests rapides paludisme (TDR), moustiquaires imprégnées
+                      et sachets de réhydratation orale (SRO) dans les pharmacies
+                      partenaires d&apos;Abidjan.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("Paludisme");
+                    addRecentSearch("Paludisme");
+                  }}
+                  className="btn-secondary shrink-0 whitespace-nowrap text-xs"
+                >
+                  Voir les produits disponibles
+                </button>
+              </div>
+            </Card>
+
             <div>
               <h2 className="mb-3 text-sm font-semibold text-ink-900">
-                Médicaments les plus disponibles
+                Médicaments fréquents
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {popular.map((medicine) => {
@@ -1401,34 +1363,6 @@ export default function Search({
                 })}
               </div>
             </div>
-
-            <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                  <IconArrowRight className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-ink-900">
-                    Comment ça marche, côté patient
-                  </p>
-                  <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-slate-500">
-                    Vous cherchez un médicament ou toute une liste, Kéné affiche les
-                    pharmacies vérifiées qui les déclarent en rayon avec leur prix,
-                    leur distance GPS et l&apos;heure de mise à jour. Lancez
-                    l&apos;itinéraire, appelez ou confirmez sur WhatsApp avant de vous
-                    déplacer.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMode("list")}
-                className="btn-secondary shrink-0 whitespace-nowrap text-xs"
-              >
-                <IconList className="h-4 w-4" />
-                Comparer une liste
-              </button>
-            </Card>
           </>
         )
       ) : selectedMedicineIds.length === 0 ? (
@@ -1505,8 +1439,7 @@ export default function Search({
                 Aucune pharmacie ne correspond à ces filtres
               </p>
               <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-                Élargissez le quartier ou désactivez « En stock seulement » / « Mes
-                favorites ».
+                Élargissez la commune ou réinitialisez vos filtres.
               </p>
             </Card>
           ) : display === "map" ? (

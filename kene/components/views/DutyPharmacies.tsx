@@ -123,8 +123,8 @@ export default function DutyPharmacies() {
               </span>
             </h2>
             <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-300">
-              Vérifiez les officines de garde vérifiées autour de vous, consultez les
-              références déclarées en stock et lancez l&apos;itinéraire ou l&apos;appel
+              Trouvez les pharmacies de garde ouvertes 24 h/24 autour de vous, consultez
+              les références en stock et lancez l&apos;itinéraire ou l&apos;appel
               directement.
             </p>
           </div>

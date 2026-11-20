@@ -14,7 +14,6 @@ import {
   IconSearch,
   IconSettings,
   IconShield,
-  IconUserCheck,
 } from "./icons";
 import Search from "./views/Search";
 import DutyPharmacies from "./views/DutyPharmacies";
@@ -22,7 +21,6 @@ import Emergency from "./views/Emergency";
 import PharmacyView from "./views/PharmacyView";
 import SettingsView from "./views/SettingsView";
 import HospitalView from "./views/HospitalView";
-import AdminView from "./views/AdminView";
 import ProfessionalAuth from "./views/ProfessionalAuth";
 import {
   dutyPharmacies,
@@ -38,7 +36,6 @@ type ViewKey =
   | "emergency"
   | "pharmacy"
   | "hospital"
-  | "admin"
   | "settings";
 
 const ALL_VIEWS: ViewKey[] = [
@@ -47,7 +44,6 @@ const ALL_VIEWS: ViewKey[] = [
   "emergency",
   "pharmacy",
   "hospital",
-  "admin",
   "settings",
 ];
 
@@ -66,7 +62,6 @@ const HEADERS: Record<ViewKey, { kicker: string; title: string }> = {
   emergency: { kicker: "Urgences", title: "Lits disponibles" },
   pharmacy: { kicker: "Back-office", title: "Espace pharmacie" },
   hospital: { kicker: "Back-office", title: "Espace hôpital" },
-  admin: { kicker: "Modération", title: "Administration Kéné" },
   settings: { kicker: "Préférences", title: "Réglages" },
 };
 
@@ -156,14 +151,6 @@ export default function Workspace() {
         icon: IconHospital,
       });
     }
-    if (session?.type === "admin") {
-      items.push({
-        key: "admin",
-        label: "Administration",
-        short: "Admin",
-        icon: IconUserCheck,
-      });
-    }
     items.push({
       key: "settings",
       label: "Réglages",
@@ -171,7 +158,7 @@ export default function Workspace() {
       icon: IconSettings,
     });
     return items;
-  }, [session?.type]);
+  }, []);
 
   const verifiedPharmacies = useMemo(() => publicPharmacies(state), [state]);
   const dutyList = useMemo(() => dutyPharmacies(state), [state]);
@@ -196,7 +183,7 @@ export default function Workspace() {
         <p className="mt-1 px-2 text-[11px] text-slate-400">
           {FEATURES.hospitals
             ? `Abidjan · ${verifiedPharmacies.length} pharmacies · ${state.hospitals.length} hôpitaux`
-            : `Abidjan · ${verifiedPharmacies.length} pharmacies vérifiées`}
+            : `Abidjan · ${verifiedPharmacies.length} pharmacies`}
         </p>
 
         <nav aria-label="Navigation principale" className="mt-7 space-y-1">
@@ -347,27 +334,17 @@ export default function Workspace() {
                 </button>
               )}
 
-              {session?.type === "admin" ? (
-                <button
-                  onClick={() => selectView("admin")}
-                  className="btn-secondary hidden whitespace-nowrap text-xs lg:inline-flex"
-                >
-                  <IconUserCheck className="h-4 w-4 shrink-0" />
-                  <span>Administration</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => selectView("pharmacy")}
-                  className="btn-secondary hidden max-w-[200px] whitespace-nowrap text-xs lg:inline-flex"
-                >
-                  <IconPharmacy className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    {session?.type === "pharmacy"
-                      ? session.establishmentName
-                      : "Espace pharmacie"}
-                  </span>
-                </button>
-              )}
+              <button
+                onClick={() => selectView("pharmacy")}
+                className="btn-secondary hidden max-w-[200px] whitespace-nowrap text-xs lg:inline-flex"
+              >
+                <IconPharmacy className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {session?.type === "pharmacy"
+                    ? session.establishmentName
+                    : "Espace pharmacie"}
+                </span>
+              </button>
             </div>
           </div>
         </header>
@@ -394,7 +371,11 @@ export default function Workspace() {
             ) : (
               <ProfessionalAuth
                 defaultType="pharmacy"
-                onOpenOther={(type) => selectView(type)}
+                onOpenOther={(type) =>
+                  selectView(
+                    type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
+                  )
+                }
               />
             )
           ) : null}
@@ -404,22 +385,22 @@ export default function Workspace() {
             ) : (
               <ProfessionalAuth
                 defaultType="hospital"
-                onOpenOther={(type) => selectView(type)}
-              />
-            )
-          ) : null}
-          {activeView === "admin" ? (
-            session?.type === "admin" ? (
-              <AdminView />
-            ) : (
-              <ProfessionalAuth
-                defaultType="admin"
-                onOpenOther={(type) => selectView(type)}
+                onOpenOther={(type) =>
+                  selectView(
+                    type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
+                  )
+                }
               />
             )
           ) : null}
           {activeView === "settings" ? (
-            <SettingsView onOpenProfessional={(type) => selectView(type)} />
+            <SettingsView
+              onOpenProfessional={(type) =>
+                selectView(
+                  type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
+                )
+              }
+            />
           ) : null}
         </main>
       </div>
