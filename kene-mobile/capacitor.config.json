@@ -1,0 +1,10 @@
+{
+  "appId": "ci.kene.app",
+  "appName": "Kéné",
+  "webDir": "www",
+  "server": {
+    "url": "https://kene-web-production.up.railway.app/app",
+    "cleartext": false,
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kéné</string>
+    <string name="title_activity_main">Kéné</string>
+    <string name="package_name">ci.kene.app</string>
+    <string name="custom_url_scheme">ci.kene.app</string>
+</resources>

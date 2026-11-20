@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+kene/prisma/*.db*
+kene/data/
+kene/*.tsbuildinfo
+kene-mobile/android/.gradle/
+kene-mobile/android/build/
+kene-mobile/android/app/build/
+kene-mobile/android/local.properties
+*.apk

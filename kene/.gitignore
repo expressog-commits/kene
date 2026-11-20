@@ -1,0 +1,7 @@
+# Données locales du backend Kéné
+.env
+data/
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal

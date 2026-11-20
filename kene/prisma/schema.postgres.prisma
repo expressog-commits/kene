@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pharmacy {
+  id                 String      @id
+  name               String
+  quartier           String
+  address            String
+  phone              String
+  whatsapp           String
+  distanceKm         Float
+  latitude           Float
+  longitude          Float
+  openFrom           Int
+  openTo             Int
+  onDuty             Boolean     @default(false)
+  dutyNote           String      @default("")
+  verificationStatus String      @default("pending")
+  licenseNumber      String      @default("")
+  verifiedAt         DateTime?
+  updatedAt          DateTime    @default(now())
+  stock              StockItem[]
+
+  @@index([verificationStatus, onDuty])
+  @@index([quartier])
+}
+
+model Medicine {
+  id        String      @id
+  name      String
+  dci       String
+  form      String
+  category  String
+  basePrice Int
+  stock     StockItem[]
+
+  @@index([category])
+}
+
+model StockItem {
+  pharmacyId String
+  medicineId String
+  price      Int
+  quantity   Int
+  updatedAt  DateTime @default(now())
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+  @@id([pharmacyId, medicineId])
+  @@index([medicineId, quantity])
+}
+
+model Hospital {
+  id         String          @id
+  name       String
+  quartier   String
+  address    String
+  phone      String
+  whatsapp   String
+  distanceKm Float
+  latitude   Float
+  longitude  Float
+  updatedAt  DateTime        @default(now())
+  units      EmergencyUnit[]
+}
+
+model EmergencyUnit {
+  id             String
+  hospitalId     String
+  label          String
+  totalBeds      Int
+  occupiedBeds   Int
+  waitingMinutes Int
+  hospital       Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@id([hospitalId, id])
+}
+
+model Account {
+  id              String    @id
+  type            String
+  establishmentId String    @default("")
+  email           String    @unique
+  managerName     String
+  role            String
+  codeHash        String
+  codeSalt        String
+  recoveryHash    String
+  recoverySalt    String
+  createdAt       DateTime  @default(now())
+  lastLoginAt     DateTime?
+  sessions        Session[]
+
+  @@index([establishmentId])
+}
+
+model Session {
+  tokenHash String   @id
+  accountId String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([expiresAt])
+}
+
+model OutboxEmail {
+  id                String   @id
+  to                String
+  accountId         String
+  managerName       String
+  establishmentName String
+  recoveryCode      String
+  kind              String
+  attempts          Int      @default(0)
+  nextAttemptAt     DateTime @default(now())
+  createdAt         DateTime @default(now())
+  lastError         String?
+
+  @@index([nextAttemptAt])
+}
+
+model ActivityLog {
+  id    String   @id
+  at    DateTime @default(now())
+  kind  String
+  label String
+
+  @@index([at])
+}
+
+model AppSetting {
+  id               String @id @default("default")
+  activePharmacyId String
+  activeHospitalId String
+  plan             String
+}

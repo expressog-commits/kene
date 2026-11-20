@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Kéné">
+  <rect width="512" height="512" rx="116" fill="#0B7E72" />
+  <g transform="rotate(-45 256 256)">
+    <rect x="116" y="200" width="280" height="112" rx="56" fill="#0B1F1D" />
+    <rect x="256" y="200" width="140" height="112" rx="56" fill="#F7F6F2" />
+  </g>
+</svg>

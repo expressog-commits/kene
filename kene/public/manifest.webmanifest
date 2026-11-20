@@ -1,0 +1,25 @@
+{
+  "name": "Kéné — Pharmacies & médicaments à Abidjan",
+  "short_name": "Kéné",
+  "description": "Disponibilité des médicaments déclarée par les pharmacies vérifiées et officines de garde à Abidjan.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F6F2",
+  "theme_color": "#0B7E72",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
