@@ -35,6 +35,7 @@ const config: Config = {
           900: "#5A320D",
         },
         sand: "#F7F6F2",
+        canvas: "#F6F9F8",
       },
       fontFamily: {
         sans: [
@@ -54,6 +55,8 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 2px rgba(11,31,29,0.04), 0 8px 24px -12px rgba(11,31,29,0.14)",
         lift: "0 24px 60px -24px rgba(11,31,29,0.3)",
+        soft: "0 12px 32px -12px rgba(11,31,29,0.12)",
+        float: "0 18px 44px -16px rgba(11,31,29,0.18)",
       },
       keyframes: {
         "fade-up": {

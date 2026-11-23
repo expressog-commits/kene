@@ -443,10 +443,12 @@ export default function PharmacyView() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-800">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="green">Officine active · Visible des patients</Badge>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-brand-200/70 bg-gradient-to-r from-brand-50/90 via-white to-emerald-50/50 px-4 py-3 text-xs text-brand-900 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Badge tone="green" dot>
+            Officine active · Visible des patients
+          </Badge>
           <span className="text-[11px] font-medium text-brand-800">
             Responsable : {session.managerName}
           </span>
@@ -458,20 +460,20 @@ export default function PharmacyView() {
         ) : null}
       </div>
 
-      <Card className="p-4 sm:p-5">
+      <Card className="rounded-3xl p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <div className="flex min-w-0 items-start gap-3.5">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
               <IconShield className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink-900">
+              <p className="truncate text-base font-bold text-ink-900">
                 {pharmacy.name}
               </p>
               <p className="mt-0.5 break-words text-xs text-slate-500">
                 {pharmacy.address} · {pharmacy.quartier}
               </p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                 <span>
                   {openingLabel(pharmacy)} · {pharmacy.phone}
                 </span>
@@ -486,7 +488,7 @@ export default function PharmacyView() {
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
-            <div className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 sm:justify-start">
+            <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 sm:justify-start">
               <span className="text-xs font-semibold text-ink-900">
                 De garde 24h/24
               </span>
@@ -512,7 +514,7 @@ export default function PharmacyView() {
                   "Stock publié — vos disponibilités sont actualisées pour les patients.",
                 );
               }}
-              className="btn-primary w-full whitespace-nowrap text-xs sm:w-auto"
+              className="btn-primary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
             >
               <IconCheck className="h-4 w-4" />
               Publier mon stock
@@ -524,7 +526,7 @@ export default function PharmacyView() {
                 void signOut();
                 notify("Déconnecté de l'espace pharmacie.");
               }}
-              className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
+              className="btn-secondary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
             >
               <IconLogout className="h-4 w-4" />
               Se déconnecter
@@ -533,7 +535,7 @@ export default function PharmacyView() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
         {[
           {
             label: "Références en stock",
@@ -571,12 +573,12 @@ export default function PharmacyView() {
             tone: "neutral" as const,
           },
         ].map((card) => (
-          <Card key={card.label} className="p-4 sm:p-5">
+          <Card key={card.label} className="rounded-2xl p-4 sm:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               {card.label}
             </p>
             <div className="mt-2.5 flex flex-wrap items-end justify-between gap-2">
-              <p className="text-xl font-semibold tracking-tight text-ink-900 sm:text-2xl">
+              <p className="text-xl font-bold tracking-tight tabular-nums text-ink-900 sm:text-2xl">
                 {card.value}
               </p>
               <Badge tone={card.tone}>{card.sub}</Badge>
@@ -586,14 +588,16 @@ export default function PharmacyView() {
       </div>
 
       {alertCount > 0 ? (
-        <div className="flex flex-col gap-3 rounded-2xl bg-ink-900 px-4 py-3.5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3.5 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sun-400/20 text-sun-300">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
               <IconAlert className="h-5 w-5" />
             </span>
             <p className="text-xs sm:text-sm">
-              <span className="font-semibold">{alertCount} références</span> à
-              réapprovisionner ou vérifier — signalez vos retours en stock dès
+              <span className="font-semibold tabular-nums">
+                {alertCount} références
+              </span>{" "}
+              à réapprovisionner ou vérifier — signalez vos retours en stock dès
               réception.
             </p>
           </div>
@@ -603,7 +607,7 @@ export default function PharmacyView() {
               setActiveTab("stock");
               setStockFilter("alerte");
             }}
-            className="btn w-full shrink-0 bg-white px-4 py-2 text-xs text-ink-900 hover:bg-slate-100 sm:w-auto"
+            className="btn w-full shrink-0 rounded-xl border border-amber-300/80 bg-white px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:bg-amber-100/60 sm:w-auto"
           >
             Voir les alertes
           </button>
@@ -612,7 +616,7 @@ export default function PharmacyView() {
 
       <div
         role="tablist"
-        aria-label="Sections du back-office pharmacie"
+        aria-label="Sections de l'espace pharmacie"
         className="grid grid-cols-1 gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-card sm:grid-cols-3"
       >
         {tabs.map((tab) => {
@@ -628,8 +632,8 @@ export default function PharmacyView() {
               className={cn(
                 "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition",
                 isSelected
-                  ? "bg-ink-900 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-ink-900",
+                  ? "bg-brand-500 text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-ink-900",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -637,7 +641,7 @@ export default function PharmacyView() {
               {tab.badge ? (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
                     isSelected
                       ? "bg-white/20 text-white"
                       : "bg-slate-100 text-slate-700",
@@ -659,7 +663,7 @@ export default function PharmacyView() {
 
       {activeTab === "stock" ? (
         <div role="tabpanel" className="space-y-4">
-          <Card className="flex flex-col p-4 sm:p-5">
+          <Card className="flex flex-col rounded-3xl p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-semibold text-ink-900">Mon stock</h2>
@@ -668,7 +672,7 @@ export default function PharmacyView() {
                   temps réel.
                 </p>
               </div>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] tabular-nums text-slate-500">
                 {stockRows.length} affichée{stockRows.length > 1 ? "s" : ""} sur{" "}
                 {overview.items} références
               </span>
@@ -704,10 +708,10 @@ export default function PharmacyView() {
                     onClick={() => setStockFilter(option.key)}
                     aria-pressed={stockFilter === option.key}
                     className={cn(
-                      "rounded-lg border px-2.5 py-2 text-[11px] font-medium transition",
+                      "rounded-xl border px-3 py-2 text-[11px] font-medium transition",
                       stockFilter === option.key
                         ? option.key === "alerte"
-                          ? "border-sun-300 bg-sun-50 text-sun-800"
+                          ? "border-amber-300 bg-amber-50 text-amber-800"
                           : "border-brand-500 bg-brand-50 text-brand-800"
                         : "border-slate-200 text-slate-600 hover:border-slate-300",
                     )}
@@ -719,7 +723,7 @@ export default function PharmacyView() {
             </div>
 
             {stockRows.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center">
                 <p className="text-xs text-slate-500">
                   Aucune référence ne correspond à votre recherche.
                 </p>
@@ -775,7 +779,7 @@ export default function PharmacyView() {
                                   price: Math.max(0, value),
                                 });
                               }}
-                              className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-[11px] font-medium text-ink-900 focus:border-brand-400 focus:outline-none"
+                              className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-[11px] font-medium tabular-nums text-ink-900 focus:border-brand-400 focus:outline-none"
                             />
                             F
                           </label>
@@ -809,7 +813,7 @@ export default function PharmacyView() {
                                   quantity: Math.max(0, value),
                                 });
                               }}
-                              className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-[11px] font-medium text-ink-900 focus:border-brand-400 focus:outline-none"
+                              className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-[11px] font-medium tabular-nums text-ink-900 focus:border-brand-400 focus:outline-none"
                             />
                             <button
                               type="button"
@@ -873,7 +877,7 @@ export default function PharmacyView() {
             </p>
           </Card>
 
-          <Card className="p-4 sm:p-5">
+          <Card className="rounded-3xl p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-ink-900">
@@ -884,7 +888,7 @@ export default function PharmacyView() {
                   nouveau médicament.
                 </p>
               </div>
-              <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <div className="flex rounded-2xl bg-slate-100 p-1 text-xs font-semibold">
                 {(
                   [
                     { key: "catalog", label: "Depuis le catalogue" },
@@ -990,7 +994,7 @@ export default function PharmacyView() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-dashed border-slate-200 px-4 py-4 sm:flex-row sm:items-center">
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-dashed border-slate-200 px-4 py-4 sm:flex-row sm:items-center">
                     <p className="text-xs text-slate-500">
                       Toutes les références du catalogue sont déjà présentes
                       dans votre stock.
@@ -1125,7 +1129,7 @@ export default function PharmacyView() {
               {addError ? (
                 <p
                   role="alert"
-                  className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
                 >
                   {addError}
                 </p>
@@ -1135,7 +1139,7 @@ export default function PharmacyView() {
         </div>
       ) : activeTab === "csv" ? (
         <div role="tabpanel">
-          <Card className="p-4 sm:p-5">
+          <Card className="rounded-3xl p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-ink-900">
@@ -1195,7 +1199,7 @@ export default function PharmacyView() {
             </div>
 
             {csvPreview ? (
-              <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+              <div className="mt-4 space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium text-ink-900">
                     {csvPreview.rows.length} ligne
@@ -1258,7 +1262,7 @@ export default function PharmacyView() {
             {importError ? (
               <p
                 role="alert"
-                className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
               >
                 {importError}
               </p>
@@ -1267,7 +1271,7 @@ export default function PharmacyView() {
             {importSummary ? (
               <div
                 role="status"
-                className="mt-3 space-y-2 rounded-xl border border-brand-200 bg-brand-50 p-3.5 text-xs text-brand-800"
+                className="mt-3 space-y-2 rounded-2xl border border-brand-200/80 bg-brand-50/80 p-4 text-xs text-brand-900"
               >
                 <p className="font-semibold">Bilan de l&apos;import</p>
                 <div className="flex flex-wrap gap-2 text-[11px]">
@@ -1298,7 +1302,7 @@ export default function PharmacyView() {
         </div>
       ) : (
         <div role="tabpanel">
-          <Card className="p-4 sm:p-5">
+          <Card className="rounded-3xl p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-semibold text-ink-900">
@@ -1511,7 +1515,7 @@ export default function PharmacyView() {
             {nameError || hoursError || coordsError ? (
               <p
                 role="alert"
-                className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
               >
                 {nameError ?? hoursError ?? coordsError}
               </p>
@@ -1520,7 +1524,7 @@ export default function PharmacyView() {
         </div>
       )}
 
-      <div className="flex items-start gap-2 rounded-xl bg-white/60 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
+      <div className="flex items-start gap-2.5 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
         <IconShield className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
         <p>
           Le stock et les prix affichés sont purement déclaratifs. Kéné

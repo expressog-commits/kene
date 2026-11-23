@@ -7,27 +7,54 @@ export function cn(...values: (string | false | null | undefined)[]): string {
   return values.filter(Boolean).join(" ");
 }
 
-type BadgeTone = "neutral" | "green" | "amber" | "red" | "blue" | "violet";
+export type BadgeTone = "neutral" | "green" | "amber" | "red" | "blue" | "violet";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  neutral: "bg-slate-100 text-slate-600",
-  green: "bg-brand-50 text-brand-700",
-  amber: "bg-amber-50 text-amber-700",
-  red: "bg-red-50 text-red-600",
-  blue: "bg-sky-50 text-sky-700",
-  violet: "bg-violet-50 text-violet-700",
+  neutral: "bg-slate-100/90 text-slate-700 ring-1 ring-inset ring-slate-200/80",
+  green: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
+  amber: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
+  red: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/80",
+  blue: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/80",
+  violet: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200/80",
+};
+
+const BADGE_DOTS: Record<BadgeTone, string> = {
+  neutral: "bg-slate-400",
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-rose-500",
+  blue: "bg-sky-500",
+  violet: "bg-violet-500",
 };
 
 export function Badge({
   tone = "neutral",
+  dot = false,
+  pulse = false,
   children,
   className,
 }: {
   tone?: BadgeTone;
+  dot?: boolean;
+  pulse?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
-  return <span className={cn("chip", BADGE_TONES[tone], className)}>{children}</span>;
+  return (
+    <span className={cn("chip", BADGE_TONES[tone], className)}>
+      {dot ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            BADGE_DOTS[tone],
+            pulse && "animate-pulse",
+          )}
+        />
+      ) : null}
+      {children}
+    </span>
+  );
 }
 
 export function Card({

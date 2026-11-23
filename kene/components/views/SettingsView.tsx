@@ -83,13 +83,13 @@ export default function SettingsView({
             : "Non activée";
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4 sm:p-5">
-          <h2 className="text-sm font-semibold text-ink-900">
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card className="rounded-3xl p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-ink-900">
             Préférences patient (locales)
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
             Enregistrées uniquement dans votre navigateur pour retrouver plus
             vite vos pharmacies et recherches habituelles.
           </p>
@@ -116,13 +116,15 @@ export default function SettingsView({
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/75 p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-900">
                   <IconPharmacy className="h-3.5 w-3.5 text-brand-600" />
                   Pharmacies favorites
                 </span>
-                <Badge tone="neutral">{favoritePharmacies.length}</Badge>
+                <Badge tone="neutral" className="tabular-nums">
+                  {favoritePharmacies.length}
+                </Badge>
               </div>
               <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
                 {favoritePharmacies.length > 0
@@ -137,13 +139,15 @@ export default function SettingsView({
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/75 p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-900">
                   <IconSearch className="h-3.5 w-3.5 text-brand-600" />
                   Recherches récentes
                 </span>
-                <Badge tone="neutral">{recentSearches.length}</Badge>
+                <Badge tone="neutral" className="tabular-nums">
+                  {recentSearches.length}
+                </Badge>
               </div>
               <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
                 {recentSearches.length > 0
@@ -156,13 +160,13 @@ export default function SettingsView({
             </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/75 p-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-900">
                 <IconCrosshair className="h-3.5 w-3.5 shrink-0 text-brand-600" />
                 Position GPS locale
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500">
+              <p className="mt-0.5 text-[11px] tabular-nums text-slate-500">
                 {locationSummary}
               </p>
             </div>
@@ -172,7 +176,7 @@ export default function SettingsView({
                   type="button"
                   disabled={locationStatus === "locating"}
                   onClick={() => requestLocation()}
-                  className="btn-secondary w-full px-3 py-2 text-[11px] sm:w-auto"
+                  className="btn-secondary w-full rounded-xl px-3 py-2 text-[11px] sm:w-auto"
                 >
                   Activer ma position
                 </button>
@@ -183,7 +187,7 @@ export default function SettingsView({
                     clearLocation();
                     notify("Position GPS effacée.");
                   }}
-                  className="btn-secondary w-full px-3 py-2 text-[11px] sm:w-auto"
+                  className="btn-secondary w-full rounded-xl px-3 py-2 text-[11px] sm:w-auto"
                 >
                   Effacer ma position
                 </button>
@@ -199,14 +203,14 @@ export default function SettingsView({
                 clearPatientPrefs();
                 notify("Préférences patient locales effacées.");
               }}
-              className="btn-secondary w-full text-xs sm:w-auto"
+              className="btn-secondary w-full rounded-xl text-xs sm:w-auto"
             >
               <IconTrash className="h-3.5 w-3.5" />
               Effacer mes préférences locales
             </button>
           </div>
 
-          <div className="mt-4 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-500">
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-brand-100/80 bg-brand-50/45 px-3.5 py-3 text-[11px] leading-relaxed text-slate-600">
             <IconShield className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
             <p>
               Aucune donnée personnelle patient (nom, téléphone, position GPS,
@@ -216,99 +220,103 @@ export default function SettingsView({
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <IconPharmacy className="h-4 w-4 shrink-0 text-brand-600" />
-              <h2 className="text-sm font-semibold text-ink-900">
-                Espace Pharmacie
-              </h2>
-            </div>
-            {session ? (
-              <Badge tone="green" className="shrink-0">
-                Connecté
-              </Badge>
-            ) : null}
-          </div>
-
-          {session ? (
-            <>
-              <p className="mt-3 text-sm font-semibold text-ink-900">
-                {session.establishmentName}
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {session.managerName} · {session.role}
-              </p>
-              <p className="mt-0.5 break-all text-[11px] text-slate-500">
-                {session.email}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Gérez votre stock, vos horaires de garde et votre position GPS
-                en temps réel.
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onOpenProfessional(
-                      session.type === "hospital" && FEATURES.hospitals
-                        ? "hospital"
-                        : "pharmacy",
-                    )
-                  }
-                  className="btn-primary text-xs"
-                >
-                  Ouvrir mon espace
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await signOut();
-                    notify("Déconnecté de l'espace pharmacie.");
-                  }}
-                  className="btn-secondary text-xs"
-                >
-                  <IconLogout className="h-4 w-4" />
-                  Se déconnecter
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                Vous êtes pharmacien ? Connectez votre officine ou inscrivez-la
-                gratuitement pour publier votre stock, vos prix et vos horaires
-                de garde.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenProfessional("pharmacy")}
-                  className="btn-primary text-xs"
-                >
+        <Card className="flex flex-col justify-between rounded-3xl p-5 sm:p-6">
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                   <IconPharmacy className="h-4 w-4" />
-                  Accéder à l&apos;Espace Pharmacie
-                </button>
-                {FEATURES.hospitals ? (
+                </span>
+                <h2 className="text-base font-semibold text-ink-900">
+                  Espace Pharmacie
+                </h2>
+              </div>
+              {session ? (
+                <Badge tone="green" dot className="shrink-0">
+                  Connecté
+                </Badge>
+              ) : null}
+            </div>
+
+            {session ? (
+              <>
+                <p className="mt-4 text-sm font-semibold text-ink-900">
+                  {session.establishmentName}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {session.managerName} · {session.role}
+                </p>
+                <p className="mt-0.5 break-all text-[11px] text-slate-500">
+                  {session.email}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                  Gérez votre stock, vos horaires de garde et votre position GPS
+                  en temps réel.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2.5">
                   <button
                     type="button"
-                    onClick={() => onOpenProfessional("hospital")}
-                    className="btn-secondary text-xs"
+                    onClick={() =>
+                      onOpenProfessional(
+                        session.type === "hospital" && FEATURES.hospitals
+                          ? "hospital"
+                          : "pharmacy",
+                      )
+                    }
+                    className="btn-primary rounded-xl text-xs"
                   >
-                    <IconHospital className="h-4 w-4" />
-                    Espace hôpital
+                    Ouvrir mon espace
                   </button>
-                ) : null}
-              </div>
-            </>
-          )}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await signOut();
+                      notify("Déconnecté de l'espace pharmacie.");
+                    }}
+                    className="btn-secondary rounded-xl text-xs"
+                  >
+                    <IconLogout className="h-4 w-4" />
+                    Se déconnecter
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 text-xs leading-relaxed text-slate-600">
+                  Vous êtes pharmacien ? Connectez votre officine ou inscrivez-la
+                  gratuitement pour publier votre stock, vos prix et vos
+                  horaires de garde.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => onOpenProfessional("pharmacy")}
+                    className="btn-primary rounded-xl text-xs"
+                  >
+                    <IconPharmacy className="h-4 w-4" />
+                    Accéder à l&apos;Espace Pharmacie
+                  </button>
+                  {FEATURES.hospitals ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenProfessional("hospital")}
+                      className="btn-secondary rounded-xl text-xs"
+                    >
+                      <IconHospital className="h-4 w-4" />
+                      Espace hôpital
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </div>
         </Card>
       </div>
 
-      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+      <Card className="flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
             <IconDownload className="h-5 w-5" />
           </span>
           <div>
@@ -317,10 +325,12 @@ export default function SettingsView({
                 Application mobile (PWA)
               </p>
               {isPwaInstalled ? (
-                <Badge tone="green">Application installée</Badge>
+                <Badge tone="green" dot>
+                  Application installée
+                </Badge>
               ) : null}
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
               {isPwaInstalled
                 ? "Kéné est installé sur votre appareil et garde vos derniers résultats accessibles hors connexion."
                 : canInstallPwa
@@ -339,7 +349,7 @@ export default function SettingsView({
                 notify("Kéné a été installé sur cet appareil.");
               }
             }}
-            className="btn-primary w-full whitespace-nowrap text-xs sm:w-auto"
+            className="btn-primary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
           >
             <IconDownload className="h-4 w-4" />
             Installer Kéné sur cet appareil
@@ -351,22 +361,24 @@ export default function SettingsView({
         <h2 className="mb-3 text-sm font-semibold text-ink-900">
           Modèle économique Kéné : Publicité &amp; Abonnement
         </h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-brand-500 p-4 ring-1 ring-brand-200 sm:p-5">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card className="rounded-3xl border-brand-200 bg-gradient-to-br from-brand-50/55 via-white to-white p-5 ring-1 ring-brand-200/70 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-ink-900">
                 1. Financement par la Publicité
               </p>
-              <Badge tone="green">Phase actuelle · Publicité</Badge>
+              <Badge tone="green" dot pulse>
+                Phase actuelle · Publicité
+              </Badge>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
               Aujourd&apos;hui, la plateforme est{" "}
               <strong>100 % gratuite</strong> pour les patients comme pour
               l&apos;inscription des pharmacies. Kéné se finance grâce aux
               espaces publicitaires dédiés aux acteurs et partenaires de la
               santé.
             </p>
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 space-y-2.5">
               {[
                 "Recherche et géolocalisation gratuites pour tous les patients",
                 "Inscription et publication du stock gratuites pour les officines",
@@ -374,29 +386,33 @@ export default function SettingsView({
               ].map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-2 text-xs text-slate-600"
+                  className="flex items-start gap-2.5 text-xs text-slate-700"
                 >
-                  <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" />
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                    <IconCheck className="h-2.5 w-2.5" />
+                  </span>
                   {item}
                 </li>
               ))}
             </ul>
           </Card>
 
-          <Card className="p-4 sm:p-5">
+          <Card className="rounded-3xl p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-ink-900">
                 2. Abonnement Pharmacies
               </p>
-              <Badge tone="amber">Une fois devenue la référence</Badge>
+              <Badge tone="amber" dot>
+                Une fois devenue la référence
+              </Badge>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            <p className="mt-2.5 text-xs leading-relaxed text-slate-600">
               Une fois que la plateforme Kéné sera installée comme la référence
               incontournable pour trouver un médicament, les pharmacies paieront
               un tarif d&apos;abonnement pour la diffusion de leur stock en
               temps réel et leurs outils avancés.
             </p>
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 space-y-2.5">
               {[
                 "Diffusion prioritaire du stock, des prix et des gardes 24h/24",
                 "Import automatisé CSV / Excel et synchronisation du catalogue",
@@ -404,9 +420,11 @@ export default function SettingsView({
               ].map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-2 text-xs text-slate-600"
+                  className="flex items-start gap-2.5 text-xs text-slate-700"
                 >
-                  <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" />
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-100 text-brand-600">
+                    <IconCheck className="h-2.5 w-2.5" />
+                  </span>
                   {item}
                 </li>
               ))}
@@ -415,9 +433,9 @@ export default function SettingsView({
         </div>
       </div>
 
-      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+      <Card className="flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
             <IconTrash className="h-5 w-5" />
           </span>
           <div>
@@ -443,7 +461,7 @@ export default function SettingsView({
                 setResetting(false);
                 setConfirmReset(false);
               }}
-              className="btn w-full whitespace-nowrap bg-red-600 px-4 py-2.5 text-xs text-white hover:bg-red-700 sm:w-auto"
+              className="btn w-full whitespace-nowrap rounded-xl bg-rose-600 px-4 py-2.5 text-xs text-white hover:bg-rose-700 sm:w-auto"
             >
               {resetting
                 ? "Réinitialisation…"
@@ -453,7 +471,7 @@ export default function SettingsView({
               type="button"
               disabled={resetting}
               onClick={() => setConfirmReset(false)}
-              className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
+              className="btn-secondary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
             >
               Annuler
             </button>
@@ -462,7 +480,7 @@ export default function SettingsView({
           <button
             type="button"
             onClick={() => setConfirmReset(true)}
-            className="btn-secondary w-full whitespace-nowrap text-xs sm:w-auto"
+            className="btn-secondary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
           >
             Réinitialiser la démo
           </button>
