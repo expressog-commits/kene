@@ -48,8 +48,9 @@ type DisplayMode = "list" | "map";
 const MAX_LIST_ITEMS = 8;
 
 const CARD_PATTERN = {
+  backgroundColor: "#0EA58C",
   backgroundImage:
-    "repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 10px, transparent 10px, transparent 22px)",
+    "repeating-linear-gradient(135deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 10px, transparent 10px, transparent 22px), linear-gradient(135deg, #14B89A 0%, #0EA58C 52%, #088A75 100%)",
 };
 
 function humanOpeningStatus(pharmacy: Pharmacy): string {
@@ -819,7 +820,7 @@ export default function Search({
           <section
             aria-label="Recherche de médicaments"
             style={CARD_PATTERN}
-            className="relative z-10 mx-4 -mt-12 rounded-[22px] bg-gradient-to-br from-[#14B89A] via-[#0EA58C] to-[#088A75] p-3.5 shadow-float"
+            className="relative z-10 mx-4 -mt-12 rounded-[22px] border border-white/25 p-3.5 shadow-float"
           >
             <div className="rounded-2xl bg-white p-2 shadow-sm">
               {mode === "single" ? (
