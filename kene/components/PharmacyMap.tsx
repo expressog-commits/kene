@@ -218,13 +218,10 @@ export default function PharmacyMap({
           scrollWheelZoom: false,
         });
 
-        L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-          {
-            attribution: "&copy; OpenStreetMap &copy; CARTO",
-            maxZoom: 19,
-          },
-        ).addTo(map);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap",
+          maxZoom: 19,
+        }).addTo(map);
 
         layerRef.current = L.layerGroup().addTo(map);
         mapRef.current = map;
