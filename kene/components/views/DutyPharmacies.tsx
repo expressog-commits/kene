@@ -229,7 +229,7 @@ export default function DutyPharmacies() {
             aria-label="Filtrer par commune"
             value={quartier}
             onChange={(event) => setQuartier(event.target.value)}
-            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] font-medium text-slate-800 transition focus:border-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 sm:w-auto sm:min-w-[210px]"
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-[15px] font-medium leading-snug text-slate-800 transition focus:border-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 sm:w-auto sm:min-w-[210px]"
           >
             {quartiers.map((item) => (
               <option key={item} value={item}>

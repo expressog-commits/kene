@@ -445,13 +445,7 @@ export default function Workspace() {
                     : "text-slate-600 hover:text-slate-900",
                 )}
               >
-                {active ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-1 h-1 w-8 rounded-full bg-brand-700"
-                  />
-                ) : null}
-                <span className="relative mt-0.5">
+                <span className="relative">
                   <Icon className="h-6 w-6" />
                   {item.key === "duty" && dutyList.length > 0 ? (
                     <span className="absolute -right-3 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-700 px-1 text-[11px] font-bold tabular-nums text-white ring-2 ring-white">

@@ -700,7 +700,7 @@ export default function Search({
                 }
                 if (query.trim().length >= 2) addRecentSearch(query);
               }}
-              placeholder="Ex : Paracétamol, Amoxicilline, sirop…"
+              placeholder="Ex : Paracétamol, Amoxicilline…"
               className="min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
             <span id="search-shortcut" className="sr-only">
@@ -727,7 +727,7 @@ export default function Search({
                 aria-label="Commune"
                 value={quartier}
                 onChange={(event) => setQuartier(event.target.value)}
-                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 py-2.5 text-sm font-semibold leading-snug text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 {quartiers.map((item) => (
                   <option key={item} value={item} className="bg-white text-slate-900">
@@ -810,7 +810,7 @@ export default function Search({
                 aria-label="Commune"
                 value={quartier}
                 onChange={(event) => setQuartier(event.target.value)}
-                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 py-2.5 text-sm font-semibold leading-snug text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 {quartiers.map((item) => (
                   <option key={item} value={item} className="bg-white text-slate-900">
@@ -907,7 +907,7 @@ export default function Search({
             aria-label="Commune"
             value={quartier}
             onChange={(event) => setQuartier(event.target.value)}
-            className="h-10 rounded-full border border-white/25 bg-white/15 px-4 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-white sm:hidden"
+            className="min-h-[40px] rounded-full border border-white/25 bg-white/15 px-4 py-2.5 text-sm font-semibold leading-snug text-white focus:outline-none focus:ring-2 focus:ring-white sm:hidden"
           >
             {quartiers.map((item) => (
               <option key={item} value={item} className="bg-white text-slate-900">
