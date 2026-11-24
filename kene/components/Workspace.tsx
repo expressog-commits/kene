@@ -5,7 +5,6 @@ import { useStore } from "./store";
 import { cn } from "./ui";
 import {
   IconBed,
-  IconClock,
   IconDownload,
   IconHospital,
   IconLogo,
@@ -16,43 +15,48 @@ import {
   IconShield,
 } from "./icons";
 import Search from "./views/Search";
-import DutyPharmacies from "./views/DutyPharmacies";
 import Emergency from "./views/Emergency";
 import PharmacyView from "./views/PharmacyView";
 import SettingsView from "./views/SettingsView";
 import HospitalView from "./views/HospitalView";
 import ProfessionalAuth from "./views/ProfessionalAuth";
-import { dutyPharmacies, emergencySummary } from "@/lib/engine";
+import { emergencySummary } from "@/lib/engine";
 import { FEATURES } from "@/lib/features";
 
-type ViewKey =
-  | "search"
-  | "duty"
-  | "emergency"
-  | "pharmacy"
-  | "hospital"
-  | "settings";
+type SpaceKey = "home" | "account" | "emergency" | "hospital";
+type AccountTab = "pharmacy" | "settings";
 
-const ALL_VIEWS: ViewKey[] = [
-  "search",
-  "duty",
-  "emergency",
-  "pharmacy",
-  "hospital",
-  "settings",
-];
+interface ParsedRoute {
+  space: SpaceKey;
+  accountTab: AccountTab;
+  onlyDutyFromUrl: boolean;
+}
 
-function parseView(raw: string | null): ViewKey {
-  if (!raw || !ALL_VIEWS.includes(raw as ViewKey)) return "search";
-  const candidate = raw as ViewKey;
-  if (!FEATURES.hospitals && (candidate === "emergency" || candidate === "hospital")) {
-    return "search";
+function parseRoute(raw: string | null): ParsedRoute {
+  switch (raw) {
+    case "duty":
+      return { space: "home", accountTab: "pharmacy", onlyDutyFromUrl: true };
+    case "pharmacy":
+    case "account":
+      return { space: "account", accountTab: "pharmacy", onlyDutyFromUrl: false };
+    case "settings":
+      return { space: "account", accountTab: "settings", onlyDutyFromUrl: false };
+    case "emergency":
+      return FEATURES.hospitals
+        ? { space: "emergency", accountTab: "pharmacy", onlyDutyFromUrl: false }
+        : { space: "home", accountTab: "pharmacy", onlyDutyFromUrl: false };
+    case "hospital":
+      return FEATURES.hospitals
+        ? { space: "hospital", accountTab: "pharmacy", onlyDutyFromUrl: false }
+        : { space: "home", accountTab: "pharmacy", onlyDutyFromUrl: false };
+    case "search":
+    default:
+      return { space: "home", accountTab: "pharmacy", onlyDutyFromUrl: false };
   }
-  return candidate;
 }
 
 interface MobileNavItem {
-  key: ViewKey;
+  key: SpaceKey;
   label: string;
   icon: (props: { className?: string }) => JSX.Element;
 }
@@ -71,8 +75,10 @@ export default function Workspace() {
     toast,
     notify,
   } = useStore();
-  const [view, setView] = useState<ViewKey>("search");
+  const [space, setSpace] = useState<SpaceKey>("home");
+  const [accountTab, setAccountTab] = useState<AccountTab>("pharmacy");
   const [initialQuery, setInitialQuery] = useState("");
+  const [initialOnlyDuty, setInitialOnlyDuty] = useState(false);
 
   const consumeInitialQuery = useCallback(() => {
     setInitialQuery("");
@@ -85,17 +91,60 @@ export default function Workspace() {
     }
   }, []);
 
-  const selectView = useCallback((next: ViewKey) => {
-    const target =
-      !FEATURES.hospitals && (next === "emergency" || next === "hospital")
-        ? "search"
-        : next;
-    setView(target);
-    setInitialQuery("");
+  const consumeInitialOnlyDuty = useCallback(() => {
+    setInitialOnlyDuty(false);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      url.searchParams.set("view", target);
-      url.searchParams.delete("q");
+      if (url.searchParams.get("view") === "duty") {
+        url.searchParams.delete("view");
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  }, []);
+
+  const selectSpace = useCallback(
+    (next: SpaceKey, nextAccountTab?: AccountTab) => {
+      const target: SpaceKey =
+        !FEATURES.hospitals && (next === "emergency" || next === "hospital")
+          ? "home"
+          : next;
+      const tabToApply = nextAccountTab ?? accountTab;
+
+      setSpace(target);
+      if (nextAccountTab) {
+        setAccountTab(nextAccountTab);
+      }
+      setInitialQuery("");
+      setInitialOnlyDuty(false);
+
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("q");
+        if (target === "home") {
+          url.searchParams.delete("view");
+        } else if (target === "account") {
+          url.searchParams.set(
+            "view",
+            tabToApply === "settings" ? "settings" : "pharmacy",
+          );
+        } else {
+          url.searchParams.set("view", target);
+        }
+        window.history.replaceState(null, "", url.toString());
+      }
+    },
+    [accountTab],
+  );
+
+  const selectAccountTab = useCallback((nextTab: AccountTab) => {
+    setSpace("account");
+    setAccountTab(nextTab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set(
+        "view",
+        nextTab === "settings" ? "settings" : "pharmacy",
+      );
       window.history.replaceState(null, "", url.toString());
     }
   }, []);
@@ -103,7 +152,10 @@ export default function Workspace() {
   useEffect(() => {
     const syncFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
-      setView(parseView(params.get("view")));
+      const parsed = parseRoute(params.get("view"));
+      setSpace(parsed.space);
+      setAccountTab(parsed.accountTab);
+      setInitialOnlyDuty(parsed.onlyDutyFromUrl);
       setInitialQuery(params.get("q")?.trim() ?? "");
     };
     syncFromUrl();
@@ -111,30 +163,32 @@ export default function Workspace() {
     return () => window.removeEventListener("popstate", syncFromUrl);
   }, []);
 
-  const dutyList = useMemo(() => dutyPharmacies(state), [state]);
   const beds = useMemo(() => emergencySummary(state), [state]);
 
-  const activeView: ViewKey =
-    !FEATURES.hospitals && (view === "emergency" || view === "hospital")
-      ? "search"
-      : view;
+  const activeSpace: SpaceKey =
+    !FEATURES.hospitals && (space === "emergency" || space === "hospital")
+      ? "home"
+      : space;
 
   const mobileNavItems = useMemo<MobileNavItem[]>(() => {
     const items: MobileNavItem[] = [
-      { key: "search", label: "Rechercher", icon: IconSearch },
-      { key: "duty", label: "De garde", icon: IconClock },
+      { key: "home", label: "Pharmacies", icon: IconSearch },
     ];
     if (FEATURES.hospitals) {
       items.push({ key: "emergency", label: "Urgences", icon: IconBed });
     }
-    items.push({ key: "pharmacy", label: "Pharmacie", icon: IconPharmacy });
+    items.push({
+      key: "account",
+      label: "Compte & Paramètres",
+      icon: IconSettings,
+    });
     if (FEATURES.hospitals) {
       items.push({ key: "hospital", label: "Hôpital", icon: IconHospital });
     }
     return items;
   }, []);
 
-  const isWideView = activeView === "search" || activeView === "duty";
+  const isWideView = activeSpace === "home";
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -143,10 +197,11 @@ export default function Workspace() {
       </a>
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <a
-            href="/"
-            className="group flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-1 focus-visible:outline-offset-4"
+        <div className="mx-auto flex h-[68px] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => selectSpace("home")}
+            className="group flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-1 text-left focus-visible:outline-offset-4"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200/70 transition group-hover:bg-brand-100">
               <IconLogo className="h-7 w-7" />
@@ -154,7 +209,7 @@ export default function Workspace() {
             <span className="font-display text-xl font-bold tracking-tight text-slate-900">
               Kéné
             </span>
-          </a>
+          </button>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
             <nav
@@ -163,47 +218,27 @@ export default function Workspace() {
             >
               <button
                 type="button"
-                onClick={() => selectView("search")}
-                aria-current={activeView === "search" ? "page" : undefined}
+                onClick={() => selectSpace("home")}
+                aria-current={activeSpace === "home" ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-[15px] font-semibold transition",
-                  activeView === "search"
+                  activeSpace === "home"
                     ? "bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200"
                     : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
                 <IconSearch className="h-4 w-4 shrink-0" />
-                <span>Rechercher</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectView("duty")}
-                aria-current={activeView === "duty" ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-[15px] font-semibold transition",
-                  activeView === "duty"
-                    ? "bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
-                )}
-              >
-                <IconClock className="h-4 w-4 shrink-0" />
-                <span>Pharmacies de garde</span>
-                {dutyList.length > 0 ? (
-                  <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-emerald-100 px-2 text-xs font-bold tabular-nums text-emerald-900">
-                    {dutyList.length}
-                  </span>
-                ) : null}
+                <span>Pharmacies</span>
               </button>
 
               {FEATURES.hospitals ? (
                 <button
                   type="button"
-                  onClick={() => selectView("emergency")}
-                  aria-current={activeView === "emergency" ? "page" : undefined}
+                  onClick={() => selectSpace("emergency")}
+                  aria-current={activeSpace === "emergency" ? "page" : undefined}
                   className={cn(
                     "inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-[15px] font-semibold transition",
-                    activeView === "emergency"
+                    activeSpace === "emergency"
                       ? "bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200"
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                   )}
@@ -220,11 +255,11 @@ export default function Workspace() {
 
               <button
                 type="button"
-                onClick={() => selectView("pharmacy")}
-                aria-current={activeView === "pharmacy" ? "page" : undefined}
+                onClick={() => selectSpace("account", accountTab)}
+                aria-current={activeSpace === "account" ? "page" : undefined}
                 className={cn(
-                  "ml-1 inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-4 text-[15px] font-semibold transition",
-                  activeView === "pharmacy"
+                  "inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-4 text-[15px] font-semibold transition",
+                  activeSpace === "account"
                     ? "border-brand-700 bg-brand-50 text-brand-800 ring-1 ring-brand-700/20"
                     : "border-slate-300 bg-white text-slate-800 hover:border-brand-600 hover:bg-brand-50/40 hover:text-brand-800",
                 )}
@@ -235,14 +270,14 @@ export default function Workspace() {
                       aria-hidden="true"
                       className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"
                     />
-                    <span className="max-w-[170px] truncate">
+                    <span className="max-w-[180px] truncate">
                       {session.establishmentName}
                     </span>
                   </>
                 ) : (
                   <>
-                    <IconPharmacy className="h-4 w-4 shrink-0 text-brand-700" />
-                    <span>Vous êtes pharmacien ?</span>
+                    <IconSettings className="h-4 w-4 shrink-0 text-brand-700" />
+                    <span>Compte &amp; Paramètres</span>
                   </>
                 )}
               </button>
@@ -250,11 +285,11 @@ export default function Workspace() {
               {FEATURES.hospitals ? (
                 <button
                   type="button"
-                  onClick={() => selectView("hospital")}
-                  aria-current={activeView === "hospital" ? "page" : undefined}
+                  onClick={() => selectSpace("hospital")}
+                  aria-current={activeSpace === "hospital" ? "page" : undefined}
                   className={cn(
                     "inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-3.5 text-[15px] font-semibold transition",
-                    activeView === "hospital"
+                    activeSpace === "hospital"
                       ? "border-brand-700 bg-brand-50 text-brand-800 ring-1 ring-brand-700/20"
                       : "border-slate-300 bg-white text-slate-800 hover:border-brand-600 hover:bg-brand-50/40 hover:text-brand-800",
                   )}
@@ -314,22 +349,6 @@ export default function Workspace() {
               </button>
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => selectView("settings")}
-              aria-label="Réglages"
-              title="Réglages"
-              aria-current={activeView === "settings" ? "page" : undefined}
-              className={cn(
-                "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition",
-                activeView === "settings"
-                  ? "border-brand-700 bg-brand-50 text-brand-800"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
-              )}
-            >
-              <IconSettings className="h-5 w-5" />
-            </button>
-
             <a
               href="tel:185"
               className="inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-rose-50 px-3.5 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200 transition hover:bg-rose-100 active:scale-[0.98]"
@@ -350,69 +369,133 @@ export default function Workspace() {
           isWideView ? "max-w-7xl" : "max-w-4xl",
         )}
       >
-        {activeView === "search" ? (
+        {activeSpace === "home" ? (
           <Search
             initialQuery={initialQuery}
             onConsumeInitialQuery={consumeInitialQuery}
+            initialOnlyDuty={initialOnlyDuty}
+            onConsumeInitialOnlyDuty={consumeInitialOnlyDuty}
           />
         ) : null}
-        {activeView === "duty" ? <DutyPharmacies /> : null}
-        {activeView === "emergency" && FEATURES.hospitals ? (
-          <Emergency onManage={() => selectView("hospital")} />
+
+        {activeSpace === "account" ? (
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Compte &amp; Paramètres
+                </h1>
+                <p className="mt-1 text-sm text-slate-600 sm:text-[15px]">
+                  Espace officine pour gérer vos stocks et préférences locales sur cet
+                  appareil.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => selectSpace("home")}
+                className="btn-secondary min-h-[44px] shrink-0"
+              >
+                ← Retour aux pharmacies
+              </button>
+            </div>
+
+            <div
+              role="tablist"
+              aria-label="Sections Compte et Paramètres"
+              className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-100/90 p-1.5"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={accountTab === "pharmacy"}
+                onClick={() => selectAccountTab("pharmacy")}
+                className={cn(
+                  "flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition sm:text-[15px]",
+                  accountTab === "pharmacy"
+                    ? "bg-white text-brand-800 shadow-sm"
+                    : "text-slate-700 hover:text-slate-900",
+                )}
+              >
+                <IconPharmacy className="h-4 w-4 shrink-0" />
+                <span>Mon compte Pharmacie</span>
+                {session?.type === "pharmacy" ? (
+                  <span
+                    aria-hidden="true"
+                    className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                  />
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={accountTab === "settings"}
+                onClick={() => selectAccountTab("settings")}
+                className={cn(
+                  "flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition sm:text-[15px]",
+                  accountTab === "settings"
+                    ? "bg-white text-brand-800 shadow-sm"
+                    : "text-slate-700 hover:text-slate-900",
+                )}
+              >
+                <IconSettings className="h-4 w-4 shrink-0" />
+                <span>Paramètres</span>
+              </button>
+            </div>
+
+            {accountTab === "pharmacy" ? (
+              session?.type === "pharmacy" ? (
+                <PharmacyView />
+              ) : (
+                <ProfessionalAuth
+                  defaultType="pharmacy"
+                  onOpenOther={(type) => {
+                    if (type === "hospital" && FEATURES.hospitals) {
+                      selectSpace("hospital");
+                    }
+                  }}
+                />
+              )
+            ) : (
+              <SettingsView />
+            )}
+          </section>
         ) : null}
-        {activeView === "pharmacy" ? (
-          session?.type === "pharmacy" ? (
-            <PharmacyView />
-          ) : (
-            <ProfessionalAuth
-              defaultType="pharmacy"
-              onOpenOther={(type) =>
-                selectView(
-                  type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
-                )
-              }
-            />
-          )
+
+        {activeSpace === "emergency" && FEATURES.hospitals ? (
+          <Emergency onManage={() => selectSpace("hospital")} />
         ) : null}
-        {activeView === "hospital" && FEATURES.hospitals ? (
+
+        {activeSpace === "hospital" && FEATURES.hospitals ? (
           session?.type === "hospital" ? (
             <HospitalView />
           ) : (
             <ProfessionalAuth
               defaultType="hospital"
               onOpenOther={(type) =>
-                selectView(
-                  type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
+                selectSpace(
+                  type === "hospital" && FEATURES.hospitals ? "hospital" : "account",
                 )
               }
             />
           )
-        ) : null}
-        {activeView === "settings" ? (
-          <SettingsView
-            onOpenProfessional={(type) =>
-              selectView(
-                type === "hospital" && FEATURES.hospitals ? "hospital" : "pharmacy",
-              )
-            }
-          />
         ) : null}
 
         <footer className="mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-slate-200/80 pt-6 text-sm text-slate-600">
           <p className="inline-flex items-center gap-2">
             <IconShield className="h-4 w-4 shrink-0 text-brand-700" />
             <span>
-              Outil d&apos;information uniquement — pas de vente ni de réservation
+              Outil d&apos;information uniquement — aucune vente ni réservation
               médicale.
             </span>
           </p>
           <div className="flex flex-wrap items-center gap-5">
             <button
               type="button"
-              onClick={() => selectView("settings")}
+              onClick={() => selectSpace("account", "settings")}
               className="inline-flex min-h-[36px] items-center font-semibold text-slate-700 underline-offset-4 transition hover:text-brand-700 hover:underline"
             >
-              Réglages
+              Compte &amp; Paramètres
             </button>
             <a
               href="tel:185"
@@ -430,13 +513,13 @@ export default function Workspace() {
       >
         <div className="mx-auto flex h-[68px] max-w-lg items-stretch justify-around gap-1.5 px-3 py-1.5">
           {mobileNavItems.map((item) => {
-            const active = activeView === item.key;
+            const active = activeSpace === item.key;
             const Icon = item.icon;
             return (
               <button
                 key={item.key}
                 type="button"
-                onClick={() => selectView(item.key)}
+                onClick={() => selectSpace(item.key)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 transition active:scale-[0.98]",
@@ -447,17 +530,14 @@ export default function Workspace() {
               >
                 <span className="relative">
                   <Icon className="h-6 w-6" />
-                  {item.key === "duty" && dutyList.length > 0 ? (
-                    <span className="absolute -right-3 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-700 px-1 text-[11px] font-bold tabular-nums text-white ring-2 ring-white">
-                      {dutyList.length}
-                    </span>
-                  ) : null}
-                  {item.key === "emergency" && FEATURES.hospitals && beds.available > 0 ? (
+                  {item.key === "emergency" &&
+                  FEATURES.hospitals &&
+                  beds.available > 0 ? (
                     <span className="absolute -right-3 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-700 px-1 text-[11px] font-bold tabular-nums text-white ring-2 ring-white">
                       {beds.available}
                     </span>
                   ) : null}
-                  {item.key === "pharmacy" && session?.type === "pharmacy" ? (
+                  {item.key === "account" && session?.type === "pharmacy" ? (
                     <span
                       aria-hidden="true"
                       className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"

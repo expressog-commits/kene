@@ -223,6 +223,11 @@ function PharmacyCardMeta({
         <span className="text-slate-600">{humanOpeningStatus(pharmacy)}</span>
       </p>
       <p className="text-sm text-slate-600">{pharmacy.address}</p>
+      {pharmacy.onDuty && pharmacy.dutyNote ? (
+        <p className="mt-2 inline-block rounded-xl bg-brand-50/80 px-3 py-1.5 text-sm font-medium text-brand-800">
+          {pharmacy.dutyNote}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -283,9 +288,13 @@ function PharmacyCardFooter({
 export default function Search({
   initialQuery,
   onConsumeInitialQuery,
+  initialOnlyDuty,
+  onConsumeInitialOnlyDuty,
 }: {
   initialQuery?: string;
   onConsumeInitialQuery?: () => void;
+  initialOnlyDuty?: boolean;
+  onConsumeInitialOnlyDuty?: () => void;
 }) {
   const {
     state,
@@ -317,6 +326,10 @@ export default function Search({
   const [selectedPharmacyId, setSelectedPharmacyId] = useState<string | null>(null);
 
   const visiblePharmacies = useMemo(() => publicPharmacies(state), [state]);
+  const dutyCount = useMemo(
+    () => visiblePharmacies.filter((pharmacy) => pharmacy.onDuty).length,
+    [visiblePharmacies],
+  );
   const quartiers = useMemo(
     () => ["Tous", ...Array.from(new Set(visiblePharmacies.map((p) => p.quartier)))],
     [visiblePharmacies],
@@ -352,6 +365,21 @@ export default function Search({
 
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyDuty, setOnlyDuty] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  useEffect(() => {
+    if (!initialOnlyDuty) return;
+    setMode("single");
+    setOnlyDuty(true);
+    setOnlyFavorites(false);
+    onConsumeInitialOnlyDuty?.();
+  }, [initialOnlyDuty, onConsumeInitialOnlyDuty]);
+
+  useEffect(() => {
+    if (favoritePharmacyIds.length === 0 && onlyFavorites) {
+      setOnlyFavorites(false);
+    }
+  }, [favoritePharmacyIds.length, onlyFavorites]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -394,6 +422,7 @@ export default function Search({
     Boolean(userLocation) ||
     onlyDuty ||
     onlyOpen ||
+    onlyFavorites ||
     quartier !== "Tous" ||
     (mode === "single" && Boolean(query.trim()));
 
@@ -402,6 +431,7 @@ export default function Search({
     setQuartier("Tous");
     setOnlyDuty(false);
     setOnlyOpen(false);
+    setOnlyFavorites(false);
     setSelectedPharmacyId(null);
     setHoveredPharmacyId(null);
     if (userLocation) clearLocation();
@@ -431,6 +461,7 @@ export default function Search({
         const open = isOpen(pharmacy);
         if (onlyOpen && !open) return false;
         if (onlyDuty && !pharmacy.onDuty) return false;
+        if (onlyFavorites && !favoritePharmacyIds.includes(pharmacy.id)) return false;
         return true;
       })
       .map((pharmacy) => {
@@ -463,6 +494,8 @@ export default function Search({
     quartier,
     onlyOpen,
     onlyDuty,
+    onlyFavorites,
+    favoritePharmacyIds,
     inStockByPharmacy,
     userLocation,
   ]);
@@ -485,10 +518,12 @@ export default function Search({
     [nearbyPharmacies],
   );
 
-  const rows = useMemo(
-    () => searchMedicine(state, query, filters, userLocation),
-    [state, query, filters, userLocation],
-  );
+  const rows = useMemo(() => {
+    const base = searchMedicine(state, query, filters, userLocation);
+    return onlyFavorites
+      ? base.filter((row) => favoritePharmacyIds.includes(row.pharmacy.id))
+      : base;
+  }, [state, query, filters, userLocation, onlyFavorites, favoritePharmacyIds]);
 
   const suggestions = useMemo(
     () => (query.trim() ? suggestMedicines(state, query, 6) : []),
@@ -512,8 +547,11 @@ export default function Search({
 
   const listResults = useMemo(() => {
     if (selectedMedicineIds.length === 0) return [];
-    return searchMedicineList(state, selectedMedicineIds, filters, userLocation);
-  }, [state, selectedMedicineIds, filters, userLocation]);
+    const base = searchMedicineList(state, selectedMedicineIds, filters, userLocation);
+    return onlyFavorites
+      ? base.filter((result) => favoritePharmacyIds.includes(result.pharmacy.id))
+      : base;
+  }, [state, selectedMedicineIds, filters, userLocation, onlyFavorites, favoritePharmacyIds]);
 
   const singleMapMarkers = useMemo<PharmacyMapMarker[]>(() => {
     const seen = new Map<string, { marker: PharmacyMapMarker; count: number }>();
@@ -671,7 +709,7 @@ export default function Search({
       >
         <h1 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {mode === "single"
-            ? "Quel médicament cherchez-vous ?"
+            ? "Trouvez votre médicament"
             : "Chercher toute une ordonnance"}
         </h1>
 
@@ -852,6 +890,50 @@ export default function Search({
         <div className="mt-3.5 flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={() => {
+              setOnlyDuty(false);
+              setOnlyOpen(false);
+              setOnlyFavorites(false);
+            }}
+            aria-pressed={!onlyDuty && !onlyOpen && !onlyFavorites}
+            className={cn(
+              "inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold transition",
+              !onlyDuty && !onlyOpen && !onlyFavorites
+                ? "bg-white text-brand-800 shadow-sm"
+                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
+            )}
+          >
+            Toutes
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOnlyDuty((value) => !value)}
+            aria-pressed={onlyDuty}
+            className={cn(
+              "inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition",
+              onlyDuty
+                ? "bg-white text-brand-800 shadow-sm"
+                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
+            )}
+          >
+            <span>De garde 24h/24</span>
+            {dutyCount > 0 ? (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
+                  onlyDuty
+                    ? "bg-brand-100 text-brand-800"
+                    : "bg-white/20 text-white",
+                )}
+              >
+                {dutyCount}
+              </span>
+            ) : null}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setOnlyOpen((value) => !value)}
             aria-pressed={onlyOpen}
             className={cn(
@@ -864,19 +946,21 @@ export default function Search({
             Ouvertes
           </button>
 
-          <button
-            type="button"
-            onClick={() => setOnlyDuty((value) => !value)}
-            aria-pressed={onlyDuty}
-            className={cn(
-              "inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold transition",
-              onlyDuty
-                ? "bg-white text-brand-800 shadow-sm"
-                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
-            )}
-          >
-            De garde 24h/24
-          </button>
+          {favoritePharmacyIds.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setOnlyFavorites((value) => !value)}
+              aria-pressed={onlyFavorites}
+              className={cn(
+                "inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition",
+                onlyFavorites
+                  ? "bg-white text-brand-800 shadow-sm"
+                  : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
+              )}
+            >
+              <span>Favorites ({favoritePharmacyIds.length})</span>
+            </button>
+          ) : null}
 
           {userLocation ? (
             <button
@@ -1123,13 +1207,21 @@ export default function Search({
                 </p>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    {rows.length === 0
-                      ? `Aucune pharmacie pour « ${query.trim()} »`
-                      : uniqueRowPharmacies === rows.length
-                        ? `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} »`
-                        : `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} » · ${rows.length} présentations`}
-                  </h2>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {rows.length === 0
+                        ? `Aucune pharmacie pour « ${query.trim()} »`
+                        : uniqueRowPharmacies === rows.length
+                          ? `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} »`
+                          : `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} » · ${rows.length} présentations`}
+                    </h2>
+                    {onlyDuty ? (
+                      <p className="mt-0.5 text-sm font-medium text-brand-700">
+                        Permanence 24 h/24 · Appelez la pharmacie avant de vous
+                        déplacer la nuit.
+                      </p>
+                    ) : null}
+                  </div>
 
                   <div className="flex items-center gap-2">
                     {hasActiveFilters ? (
@@ -1273,11 +1365,19 @@ export default function Search({
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    {nearbyPharmacies.length} pharmacie
-                    {nearbyPharmacies.length > 1 ? "s" : ""} vérifiée
-                    {nearbyPharmacies.length > 1 ? "s" : ""}
-                  </h2>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {nearbyPharmacies.length} pharmacie
+                      {nearbyPharmacies.length > 1 ? "s" : ""} vérifiée
+                      {nearbyPharmacies.length > 1 ? "s" : ""}
+                    </h2>
+                    {onlyDuty ? (
+                      <p className="mt-0.5 text-sm font-medium text-brand-700">
+                        Permanence 24 h/24 · Appelez la pharmacie avant de vous
+                        déplacer la nuit.
+                      </p>
+                    ) : null}
+                  </div>
 
                   <div className="flex items-center gap-2">
                     {hasActiveFilters ? (
@@ -1662,38 +1762,6 @@ export default function Search({
               )}
             </>
           )}
-
-          <div
-            className={cn(
-              "rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6",
-              display === "map" && canShowMobileMap && "hidden lg:block",
-            )}
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <Badge tone="amber">Publicité</Badge>
-                <p className="mt-2.5 text-base font-bold text-slate-900">
-                  Prévention Paludisme &amp; Hydratation en Côte d&apos;Ivoire
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600 sm:text-[15px]">
-                  Retrouvez les tests rapides paludisme (TDR), moustiquaires imprégnées
-                  et sachets de réhydratation orale (SRO) dans les pharmacies
-                  partenaires d&apos;Abidjan.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("single");
-                  setQuery("Paludisme");
-                  addRecentSearch("Paludisme");
-                }}
-                className="btn-secondary h-12 shrink-0 whitespace-nowrap px-5 text-[15px]"
-              >
-                Voir les produits
-              </button>
-            </div>
-          </div>
         </div>
 
         <aside

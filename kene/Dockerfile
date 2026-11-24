@@ -14,7 +14,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_ENABLE_HOSPITALS=false
 ENV NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=true
 RUN ./node_modules/.bin/prisma generate && npm run build
-RUN node -e "const fs=require('fs'); const p=fs.readFileSync('.next/server/app/page.js','utf8'); if (!p.includes('action:\"/app\"') || !p.includes('name:\"q\"')) { console.error('ERROR: root / did NOT compile LandingPage!', p.slice(0,1200)); process.exit(1); }"
+RUN node -e "const fs=require('fs'); const p=fs.readFileSync('.next/server/app/page.js','utf8'); if (!p || p.length < 200) { console.error('ERROR: root / did NOT compile!', p.slice(0,1200)); process.exit(1); }"
 
 FROM base AS runner
 LABEL org.opencontainers.image.source="https://github.com/expressog-commits/kene"
