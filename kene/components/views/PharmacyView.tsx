@@ -443,53 +443,53 @@ export default function PharmacyView() {
   ];
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-brand-200/70 bg-gradient-to-r from-brand-50/90 via-white to-emerald-50/50 px-4 py-3 text-xs text-brand-900 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2.5">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-200/80 bg-brand-50/70 px-4 py-3 text-sm text-brand-950">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge tone="green" dot>
             Officine active · Visible des patients
           </Badge>
-          <span className="text-[11px] font-medium text-brand-800">
+          <span className="text-sm font-medium text-brand-900">
             Responsable : {session.managerName}
           </span>
         </div>
         {pharmacy.licenseNumber ? (
-          <span className="font-mono text-[11px] font-semibold text-brand-800">
+          <span className="font-mono text-sm font-semibold text-brand-900">
             Agrément : {pharmacy.licenseNumber}
           </span>
         ) : null}
       </div>
 
-      <Card className="rounded-3xl p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-start gap-3.5">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-              <IconShield className="h-5 w-5" />
+      <Card className="rounded-2xl p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+              <IconShield className="h-6 w-6" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-base font-bold text-ink-900">
+              <h1 className="truncate font-display text-xl font-bold text-slate-900">
                 {pharmacy.name}
-              </p>
-              <p className="mt-0.5 break-words text-xs text-slate-500">
+              </h1>
+              <p className="mt-1 break-words text-[15px] text-slate-600">
                 {pharmacy.address} · {pharmacy.quartier}
               </p>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
                 <span>
                   {openingLabel(pharmacy)} · {pharmacy.phone}
                 </span>
-                <span className="inline-flex items-center gap-1">
-                  <IconClock className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5">
+                  <IconClock className="h-4 w-4 text-slate-500" />
                   {overview.lastUpdatedAt
-                    ? `maj ${timeAgo(overview.lastUpdatedAt)}`
-                    : "aucune mise à jour"}
+                    ? `Maj ${timeAgo(overview.lastUpdatedAt)}`
+                    : "Aucune mise à jour"}
                 </span>
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
-            <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 sm:justify-start">
-              <span className="text-xs font-semibold text-ink-900">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
+            <div className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 sm:justify-start">
+              <span className="text-[15px] font-semibold text-slate-900">
                 De garde 24h/24
               </span>
               <Toggle
@@ -514,7 +514,7 @@ export default function PharmacyView() {
                   "Stock publié — vos disponibilités sont actualisées pour les patients.",
                 );
               }}
-              className="btn-primary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
+              className="btn-primary h-12 w-full whitespace-nowrap rounded-xl px-5 text-[15px] sm:w-auto"
             >
               <IconCheck className="h-4 w-4" />
               Publier mon stock
@@ -526,7 +526,7 @@ export default function PharmacyView() {
                 void signOut();
                 notify("Déconnecté de l'espace pharmacie.");
               }}
-              className="btn-secondary w-full whitespace-nowrap rounded-xl text-xs sm:w-auto"
+              className="btn-secondary h-12 w-full whitespace-nowrap rounded-xl px-5 text-[15px] sm:w-auto"
             >
               <IconLogout className="h-4 w-4" />
               Se déconnecter
@@ -535,7 +535,7 @@ export default function PharmacyView() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
             label: "Références en stock",
@@ -573,12 +573,10 @@ export default function PharmacyView() {
             tone: "neutral" as const,
           },
         ].map((card) => (
-          <Card key={card.label} className="rounded-2xl p-4 sm:p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              {card.label}
-            </p>
-            <div className="mt-2.5 flex flex-wrap items-end justify-between gap-2">
-              <p className="text-xl font-bold tracking-tight tabular-nums text-ink-900 sm:text-2xl">
+          <Card key={card.label} className="rounded-2xl p-5">
+            <p className="text-sm font-semibold text-slate-600">{card.label}</p>
+            <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+              <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">
                 {card.value}
               </p>
               <Badge tone={card.tone}>{card.sub}</Badge>
@@ -588,15 +586,15 @@ export default function PharmacyView() {
       </div>
 
       {alertCount > 0 ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3.5 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
               <IconAlert className="h-5 w-5" />
             </span>
-            <p className="text-xs sm:text-sm">
-              <span className="font-semibold tabular-nums">
+            <p className="text-[15px] leading-relaxed">
+              <strong className="font-bold tabular-nums">
                 {alertCount} références
-              </span>{" "}
+              </strong>{" "}
               à réapprovisionner ou vérifier — signalez vos retours en stock dès
               réception.
             </p>
@@ -607,7 +605,7 @@ export default function PharmacyView() {
               setActiveTab("stock");
               setStockFilter("alerte");
             }}
-            className="btn w-full shrink-0 rounded-xl border border-amber-300/80 bg-white px-4 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:bg-amber-100/60 sm:w-auto"
+            className="min-h-[44px] w-full shrink-0 rounded-xl border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100/70 sm:w-auto"
           >
             Voir les alertes
           </button>
@@ -617,7 +615,7 @@ export default function PharmacyView() {
       <div
         role="tablist"
         aria-label="Sections de l'espace pharmacie"
-        className="grid grid-cols-1 gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-card sm:grid-cols-3"
+        className="grid grid-cols-1 gap-2 rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-card sm:grid-cols-3"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -630,10 +628,10 @@ export default function PharmacyView() {
               aria-selected={isSelected}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition",
+                "flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-semibold transition",
                 isSelected
-                  ? "bg-brand-500 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-ink-900",
+                  ? "bg-brand-700 text-white shadow-sm"
+                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -641,7 +639,7 @@ export default function PharmacyView() {
               {tab.badge ? (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
+                    "rounded-full px-2.5 py-0.5 text-[13px] font-bold leading-none tabular-nums",
                     isSelected
                       ? "bg-white/20 text-white"
                       : "bg-slate-100 text-slate-700",
@@ -653,7 +651,7 @@ export default function PharmacyView() {
               {tab.hasAlert ? (
                 <span
                   aria-label="Erreur de saisie"
-                  className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                  className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500"
                 />
               ) : null}
             </button>
@@ -662,38 +660,40 @@ export default function PharmacyView() {
       </div>
 
       {activeTab === "stock" ? (
-        <div role="tabpanel" className="space-y-4">
-          <Card className="flex flex-col rounded-3xl p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        <div role="tabpanel" className="space-y-6">
+          <Card className="flex flex-col rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-ink-900">Mon stock</h2>
-                <p className="mt-0.5 text-[11px] text-slate-500">
+                <h2 className="font-display text-lg font-bold text-slate-900">
+                  Mon stock
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
                   Modifiez les prix en FCFA et les quantités disponibles en
                   temps réel.
                 </p>
               </div>
-              <span className="text-[11px] tabular-nums text-slate-500">
+              <span className="text-sm font-medium tabular-nums text-slate-600">
                 {stockRows.length} affichée{stockRows.length > 1 ? "s" : ""} sur{" "}
                 {overview.items} références
               </span>
             </div>
 
-            <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative min-w-0 flex-1 sm:min-w-[220px]">
-                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative min-w-0 flex-1 sm:min-w-[240px]">
+                <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   aria-label="Filtrer le stock par nom, DCI ou catégorie"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Rechercher par nom, DCI ou catégorie…"
-                  className="input py-2 pl-8 text-xs"
+                  className="input h-12 pl-10 text-[15px]"
                 />
               </div>
 
               <div
                 role="group"
                 aria-label="Filtrer par état du stock"
-                className="flex flex-wrap items-center gap-1.5"
+                className="flex flex-wrap items-center gap-2"
               >
                 {(
                   [
@@ -708,12 +708,12 @@ export default function PharmacyView() {
                     onClick={() => setStockFilter(option.key)}
                     aria-pressed={stockFilter === option.key}
                     className={cn(
-                      "rounded-xl border px-3 py-2 text-[11px] font-medium transition",
+                      "min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold transition",
                       stockFilter === option.key
                         ? option.key === "alerte"
-                          ? "border-amber-300 bg-amber-50 text-amber-800"
-                          : "border-brand-500 bg-brand-50 text-brand-800"
-                        : "border-slate-200 text-slate-600 hover:border-slate-300",
+                          ? "border-amber-300 bg-amber-50 text-amber-900"
+                          : "border-brand-600 bg-brand-50 text-brand-800"
+                        : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                     )}
                   >
                     {option.label}
@@ -723,8 +723,8 @@ export default function PharmacyView() {
             </div>
 
             {stockRows.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center">
-                <p className="text-xs text-slate-500">
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 px-5 py-10 text-center">
+                <p className="text-[15px] text-slate-600">
                   Aucune référence ne correspond à votre recherche.
                 </p>
                 {(query.trim() || stockFilter !== "toutes") && (
@@ -734,25 +734,25 @@ export default function PharmacyView() {
                       setQuery("");
                       setStockFilter("toutes");
                     }}
-                    className="btn-secondary mt-3 px-3 py-1.5 text-[11px]"
+                    className="btn-secondary mt-4 h-12 rounded-xl px-5 text-[15px]"
                   >
                     Afficher tout le stock
                   </button>
                 )}
               </div>
             ) : (
-              <div className="scroll-thin mt-3 max-h-[520px] flex-1 overflow-y-auto">
-                <ul className="divide-y divide-slate-100">
+              <div className="scroll-thin mt-4 max-h-[560px] flex-1 overflow-y-auto">
+                <ul className="divide-y divide-slate-200/70">
                   {stockRows.map(({ item, medicine, level }) => {
                     const meta = LEVEL_META[level];
                     return (
-                      <li key={item.medicineId} className="py-3.5">
+                      <li key={item.medicineId} className="py-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-ink-900">
+                            <p className="truncate text-[15px] font-bold text-slate-900">
                               {medicine.name}
                             </p>
-                            <p className="truncate text-[11px] text-slate-500">
+                            <p className="mt-0.5 truncate text-sm text-slate-600">
                               {medicine.dci} · {medicine.form} ·{" "}
                               {medicine.category} · maj{" "}
                               {timeAgo(item.updatedAt)}
@@ -763,8 +763,8 @@ export default function PharmacyView() {
                           </Badge>
                         </div>
 
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                          <label className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                             Prix
                             <input
                               type="number"
@@ -779,12 +779,12 @@ export default function PharmacyView() {
                                   price: Math.max(0, value),
                                 });
                               }}
-                              className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-[11px] font-medium tabular-nums text-ink-900 focus:border-brand-400 focus:outline-none"
+                              className="h-11 min-h-[44px] w-28 rounded-xl border border-slate-200 px-3 text-right text-[15px] font-semibold tabular-nums text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                             />
-                            F
+                            <span>F</span>
                           </label>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() =>
@@ -796,10 +796,10 @@ export default function PharmacyView() {
                                 )
                               }
                               disabled={item.quantity <= 0}
-                              className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="inline-flex h-11 min-h-[44px] w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                               aria-label={`Retirer une unité de ${medicine.name}`}
                             >
-                              <IconMinus className="h-3.5 w-3.5" />
+                              <IconMinus className="h-4 w-4" />
                             </button>
                             <input
                               type="number"
@@ -813,7 +813,7 @@ export default function PharmacyView() {
                                   quantity: Math.max(0, value),
                                 });
                               }}
-                              className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-[11px] font-medium tabular-nums text-ink-900 focus:border-brand-400 focus:outline-none"
+                              className="h-11 min-h-[44px] w-20 rounded-xl border border-slate-200 px-2 text-center text-[15px] font-semibold tabular-nums text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                             />
                             <button
                               type="button"
@@ -825,14 +825,14 @@ export default function PharmacyView() {
                                   true,
                                 )
                               }
-                              className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50"
+                              className="inline-flex h-11 min-h-[44px] w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
                               aria-label={`Ajouter une unité de ${medicine.name}`}
                             >
-                              <IconPlus className="h-3.5 w-3.5" />
+                              <IconPlus className="h-4 w-4" />
                             </button>
                           </div>
 
-                          <div className="flex items-center gap-3 sm:ml-auto">
+                          <div className="flex items-center gap-2 sm:ml-auto">
                             <button
                               type="button"
                               onClick={() =>
@@ -844,7 +844,7 @@ export default function PharmacyView() {
                                 )
                               }
                               disabled={item.quantity <= 0}
-                              className="text-[11px] font-medium text-slate-600 underline-offset-2 hover:text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                              className="min-h-[44px] rounded-xl border border-slate-200 px-3.5 text-sm font-semibold text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Rupture
                             </button>
@@ -856,9 +856,9 @@ export default function PharmacyView() {
                                   `${medicine.name} retiré de votre stock.`,
                                 );
                               }}
-                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-700"
+                              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700"
                             >
-                              <IconTrash className="h-3.5 w-3.5" />
+                              <IconTrash className="h-4 w-4" />
                               Retirer
                             </button>
                           </div>
@@ -870,25 +870,25 @@ export default function PharmacyView() {
               </div>
             )}
 
-            <p className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
-              <IconPhone className="h-3.5 w-3.5 shrink-0" />
+            <p className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+              <IconPhone className="h-4 w-4 shrink-0 text-brand-700" />
               Les patients consultent vos disponibilités et vous contactent
               directement par téléphone ou WhatsApp.
             </p>
           </Card>
 
-          <Card className="rounded-3xl p-5 sm:p-6">
+          <Card className="rounded-2xl p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-ink-900">
+                <h2 className="font-display text-lg font-bold text-slate-900">
                   Ajouter un médicament à mon stock
                 </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Sélectionnez une référence existante du catalogue ou créez un
                   nouveau médicament.
                 </p>
               </div>
-              <div className="flex rounded-2xl bg-slate-100 p-1 text-xs font-semibold">
+              <div className="flex rounded-2xl bg-slate-100 p-1.5 text-sm font-semibold">
                 {(
                   [
                     { key: "catalog", label: "Depuis le catalogue" },
@@ -907,10 +907,10 @@ export default function PharmacyView() {
                     }}
                     aria-pressed={addMode === tab.key}
                     className={cn(
-                      "flex-1 rounded-lg px-3 py-1.5 transition sm:flex-initial",
+                      "min-h-[44px] flex-1 rounded-xl px-4 py-2 transition sm:flex-initial",
                       addMode === tab.key
-                        ? "bg-white text-ink-900 shadow-sm"
-                        : "text-slate-600 hover:text-ink-900",
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900",
                     )}
                   >
                     {tab.label}
@@ -919,17 +919,20 @@ export default function PharmacyView() {
               </div>
             </div>
 
-            <form onSubmit={handleAddMedicine} className="mt-4 space-y-3">
+            <form onSubmit={handleAddMedicine} className="mt-5 space-y-4">
               {addMode === "catalog" ? (
                 availableCatalog.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_0.7fr_0.7fr_auto] sm:items-end">
+                  <div className="grid gap-3.5 sm:grid-cols-[minmax(0,1.6fr)_0.7fr_0.7fr_auto] sm:items-end">
                     <div className="min-w-0">
-                      <label className="label" htmlFor="catalog-medicine">
+                      <label
+                        className="mb-1.5 block text-sm font-semibold text-slate-700"
+                        htmlFor="catalog-medicine"
+                      >
                         Médicament du catalogue
                       </label>
                       <select
                         id="catalog-medicine"
-                        className="input"
+                        className="input h-12 text-[15px]"
                         value={effectiveMedicine?.id ?? ""}
                         onChange={(event) => {
                           const nextId = event.target.value;
@@ -950,7 +953,10 @@ export default function PharmacyView() {
                       </select>
                     </div>
                     <div>
-                      <label className="label" htmlFor="catalog-price">
+                      <label
+                        className="mb-1.5 block text-sm font-semibold text-slate-700"
+                        htmlFor="catalog-price"
+                      >
                         Prix (FCFA)
                       </label>
                       <input
@@ -959,7 +965,7 @@ export default function PharmacyView() {
                         min={0}
                         max={1000000}
                         step={50}
-                        className="input"
+                        className="input h-12 text-[15px]"
                         value={addPrice}
                         onChange={(event) => {
                           setAddPrice(event.target.value);
@@ -968,7 +974,10 @@ export default function PharmacyView() {
                       />
                     </div>
                     <div>
-                      <label className="label" htmlFor="catalog-qty">
+                      <label
+                        className="mb-1.5 block text-sm font-semibold text-slate-700"
+                        htmlFor="catalog-qty"
+                      >
                         Quantité
                       </label>
                       <input
@@ -976,7 +985,7 @@ export default function PharmacyView() {
                         type="number"
                         min={0}
                         max={99999}
-                        className="input"
+                        className="input h-12 text-[15px]"
                         value={addQuantity}
                         onChange={(event) => {
                           setAddQuantity(event.target.value);
@@ -987,15 +996,15 @@ export default function PharmacyView() {
                     <button
                       type="submit"
                       disabled={addBusy}
-                      className="btn-primary w-full text-xs sm:w-auto"
+                      className="btn-primary h-12 w-full px-5 text-[15px] sm:w-auto"
                     >
                       <IconPlus className="h-4 w-4" />
                       {addBusy ? "Ajout…" : "Ajouter"}
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-dashed border-slate-200 px-4 py-4 sm:flex-row sm:items-center">
-                    <p className="text-xs text-slate-500">
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-dashed border-slate-200 px-5 py-5 sm:flex-row sm:items-center">
+                    <p className="text-[15px] text-slate-600">
                       Toutes les références du catalogue sont déjà présentes
                       dans votre stock.
                     </p>
@@ -1005,21 +1014,24 @@ export default function PharmacyView() {
                         setAddMode("custom");
                         setAddError(null);
                       }}
-                      className="btn-secondary text-xs"
+                      className="btn-secondary h-12 px-5 text-[15px]"
                     >
                       Créer une nouvelle référence
                     </button>
                   </div>
                 )
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <label className="label" htmlFor="custom-med-name">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-name"
+                    >
                       Nom du médicament
                     </label>
                     <input
                       id="custom-med-name"
-                      className="input"
+                      className="input h-12 text-[15px]"
                       placeholder="Ex. Doliprane 1000 mg"
                       value={customName}
                       onChange={(event) => {
@@ -1029,12 +1041,15 @@ export default function PharmacyView() {
                     />
                   </div>
                   <div>
-                    <label className="label" htmlFor="custom-med-dci">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-dci"
+                    >
                       Molécule (DCI)
                     </label>
                     <input
                       id="custom-med-dci"
-                      className="input"
+                      className="input h-12 text-[15px]"
                       placeholder="Ex. Paracétamol"
                       value={customDci}
                       onChange={(event) => {
@@ -1044,12 +1059,15 @@ export default function PharmacyView() {
                     />
                   </div>
                   <div>
-                    <label className="label" htmlFor="custom-med-form">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-form"
+                    >
                       Forme / conditionnement
                     </label>
                     <input
                       id="custom-med-form"
-                      className="input"
+                      className="input h-12 text-[15px]"
                       placeholder="Ex. Boîte de 8 comprimés"
                       value={customForm}
                       onChange={(event) => {
@@ -1059,12 +1077,15 @@ export default function PharmacyView() {
                     />
                   </div>
                   <div>
-                    <label className="label" htmlFor="custom-med-category">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-category"
+                    >
                       Catégorie
                     </label>
                     <select
                       id="custom-med-category"
-                      className="input"
+                      className="input h-12 text-[15px]"
                       value={customCategory}
                       onChange={(event) => {
                         setCustomCategory(event.target.value);
@@ -1079,7 +1100,10 @@ export default function PharmacyView() {
                     </select>
                   </div>
                   <div>
-                    <label className="label" htmlFor="custom-med-price">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-price"
+                    >
                       Prix (FCFA)
                     </label>
                     <input
@@ -1088,7 +1112,7 @@ export default function PharmacyView() {
                       min={0}
                       max={1000000}
                       step={50}
-                      className="input"
+                      className="input h-12 text-[15px]"
                       value={addPrice}
                       onChange={(event) => {
                         setAddPrice(event.target.value);
@@ -1097,16 +1121,19 @@ export default function PharmacyView() {
                     />
                   </div>
                   <div>
-                    <label className="label" htmlFor="custom-med-qty">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="custom-med-qty"
+                    >
                       Quantité
                     </label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="flex flex-col gap-2.5 sm:flex-row">
                       <input
                         id="custom-med-qty"
                         type="number"
                         min={0}
                         max={99999}
-                        className="input"
+                        className="input h-12 text-[15px]"
                         value={addQuantity}
                         onChange={(event) => {
                           setAddQuantity(event.target.value);
@@ -1116,7 +1143,7 @@ export default function PharmacyView() {
                       <button
                         type="submit"
                         disabled={addBusy}
-                        className="btn-primary shrink-0 text-xs"
+                        className="btn-primary h-12 shrink-0 px-5 text-[15px]"
                       >
                         <IconPlus className="h-4 w-4" />
                         {addBusy ? "Ajout…" : "Créer"}
@@ -1129,7 +1156,7 @@ export default function PharmacyView() {
               {addError ? (
                 <p
                   role="alert"
-                  className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
                 >
                   {addError}
                 </p>
@@ -1139,27 +1166,27 @@ export default function PharmacyView() {
         </div>
       ) : activeTab === "csv" ? (
         <div role="tabpanel">
-          <Card className="rounded-3xl p-5 sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-ink-900">
+                <h2 className="font-display text-lg font-bold text-slate-900">
                   Import rapide CSV / Excel en masse
                 </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Importez ou mettez à jour jusqu&apos;à 200 lignes depuis un
                   fichier CSV ou un copier-coller Excel / Calc.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={downloadCsvTemplate}
-                  className="btn-secondary px-3 py-2 text-xs"
+                  className="btn-secondary h-12 px-4 text-[15px]"
                 >
                   <IconDownload className="h-4 w-4" />
                   Télécharger le modèle CSV
                 </button>
-                <label className="btn-secondary cursor-pointer px-3 py-2 text-xs">
+                <label className="btn-secondary h-12 cursor-pointer px-4 text-[15px]">
                   <IconUpload className="h-4 w-4" />
                   Charger un fichier
                   <input
@@ -1180,14 +1207,17 @@ export default function PharmacyView() {
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className="label" htmlFor="bulk-csv-input">
+            <div className="mt-5">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="bulk-csv-input"
+              >
                 Contenu CSV (séparateur ; , ou tabulation)
               </label>
               <textarea
                 id="bulk-csv-input"
                 rows={6}
-                className="input scroll-thin font-mono text-xs"
+                className="input scroll-thin min-h-[160px] font-mono text-sm leading-relaxed"
                 placeholder={STOCK_CSV_TEMPLATE}
                 value={csvText}
                 onChange={(event) => {
@@ -1199,9 +1229,9 @@ export default function PharmacyView() {
             </div>
 
             {csvPreview ? (
-              <div className="mt-4 space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-xs">
+              <div className="mt-4 space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium text-ink-900">
+                  <span className="font-semibold text-slate-900">
                     {csvPreview.rows.length} ligne
                     {csvPreview.rows.length > 1 ? "s" : ""} valide
                     {csvPreview.rows.length > 1 ? "s" : ""} prête
@@ -1219,7 +1249,7 @@ export default function PharmacyView() {
                 </div>
 
                 {csvPreview.errors.length > 0 ? (
-                  <ul className="max-h-32 space-y-1 overflow-y-auto text-[11px] text-amber-800">
+                  <ul className="max-h-36 space-y-1 overflow-y-auto text-sm text-amber-900">
                     {csvPreview.errors.map((err) => (
                       <li key={err}>• {err}</li>
                     ))}
@@ -1228,14 +1258,14 @@ export default function PharmacyView() {
               </div>
             ) : null}
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 disabled={
                   importBusy || !csvPreview || csvPreview.rows.length === 0
                 }
                 onClick={handleBulkImport}
-                className="btn-primary w-full text-xs sm:w-auto"
+                className="btn-primary h-12 w-full px-5 text-[15px] sm:w-auto"
               >
                 <IconUpload className="h-4 w-4" />
                 {importBusy
@@ -1252,7 +1282,7 @@ export default function PharmacyView() {
                     setCsvText("");
                     setImportError(null);
                   }}
-                  className="btn-ghost text-xs"
+                  className="btn-ghost h-12 px-4 text-[15px]"
                 >
                   Vider
                 </button>
@@ -1262,7 +1292,7 @@ export default function PharmacyView() {
             {importError ? (
               <p
                 role="alert"
-                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
               >
                 {importError}
               </p>
@@ -1271,10 +1301,10 @@ export default function PharmacyView() {
             {importSummary ? (
               <div
                 role="status"
-                className="mt-3 space-y-2 rounded-2xl border border-brand-200/80 bg-brand-50/80 p-4 text-xs text-brand-900"
+                className="mt-4 space-y-2.5 rounded-2xl border border-brand-200/80 bg-brand-50/80 p-4 text-sm text-brand-950"
               >
-                <p className="font-semibold">Bilan de l&apos;import</p>
-                <div className="flex flex-wrap gap-2 text-[11px]">
+                <p className="font-bold">Bilan de l&apos;import</p>
+                <div className="flex flex-wrap gap-2">
                   <Badge tone="green">{importSummary.imported} ajoutée(s)</Badge>
                   <Badge tone="blue">
                     {importSummary.updated} mise(s) à jour
@@ -1290,7 +1320,7 @@ export default function PharmacyView() {
                   ) : null}
                 </div>
                 {importSummary.errors.length > 0 ? (
-                  <ul className="max-h-32 space-y-1 overflow-y-auto text-[11px] text-amber-800">
+                  <ul className="max-h-36 space-y-1 overflow-y-auto text-sm text-amber-900">
                     {importSummary.errors.map((err, idx) => (
                       <li key={`${idx}-${err}`}>• {err}</li>
                     ))}
@@ -1302,31 +1332,34 @@ export default function PharmacyView() {
         </div>
       ) : (
         <div role="tabpanel">
-          <Card className="rounded-3xl p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <Card className="rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-ink-900">
+                <h2 className="font-display text-lg font-bold text-slate-900">
                   Fiche officine &amp; géolocalisation GPS
                 </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Les modifications sont enregistrées automatiquement. Publiez
                   votre stock une fois vos informations vérifiées.
                 </p>
               </div>
               <Badge tone="neutral">
-                <IconList className="h-3 w-3" />
+                <IconList className="h-3.5 w-3.5" />
                 {openingLabel(pharmacy)}
               </Badge>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="sm:col-span-2">
-                <label className="label" htmlFor="pharmacy-name">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-name"
+                >
                   Nom de l&apos;officine
                 </label>
                 <input
                   id="pharmacy-name"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={nameInput}
                   onChange={(event) => {
                     const value = event.target.value;
@@ -1341,12 +1374,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-quartier">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-quartier"
+                >
                   Quartier / commune
                 </label>
                 <input
                   id="pharmacy-quartier"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={pharmacy.quartier}
                   onChange={(event) =>
                     updatePharmacy(pharmacy.id, {
@@ -1356,12 +1392,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-phone">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-phone"
+                >
                   Téléphone
                 </label>
                 <input
                   id="pharmacy-phone"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={pharmacy.phone}
                   onChange={(event) =>
                     updatePharmacy(pharmacy.id, { phone: event.target.value })
@@ -1369,12 +1408,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-whatsapp">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-whatsapp"
+                >
                   WhatsApp
                 </label>
                 <input
                   id="pharmacy-whatsapp"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={pharmacy.whatsapp}
                   onChange={(event) =>
                     updatePharmacy(pharmacy.id, {
@@ -1384,12 +1426,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-address">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-address"
+                >
                   Adresse
                 </label>
                 <input
                   id="pharmacy-address"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={pharmacy.address}
                   onChange={(event) =>
                     updatePharmacy(pharmacy.id, { address: event.target.value })
@@ -1397,7 +1442,10 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-open-from">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-open-from"
+                >
                   Ouverture (0–23 h)
                 </label>
                 <input
@@ -1406,7 +1454,7 @@ export default function PharmacyView() {
                   min={0}
                   max={23}
                   step={1}
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={openFromInput}
                   onChange={(event) =>
                     handleHoursChange(event.target.value, openToInput)
@@ -1414,7 +1462,10 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-open-to">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-open-to"
+                >
                   Fermeture (1–24 h)
                 </label>
                 <input
@@ -1423,7 +1474,7 @@ export default function PharmacyView() {
                   min={1}
                   max={24}
                   step={1}
-                  className="input"
+                  className="input h-12 text-[15px]"
                   value={openToInput}
                   onChange={(event) =>
                     handleHoursChange(openFromInput, event.target.value)
@@ -1431,12 +1482,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-license">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-license"
+                >
                   N° d&apos;agrément ONP / DPML
                 </label>
                 <input
                   id="pharmacy-license"
-                  className="input font-mono text-xs"
+                  className="input h-12 font-mono text-[15px]"
                   placeholder="CI-ONP-2026-0001"
                   maxLength={60}
                   value={pharmacy.licenseNumber}
@@ -1448,12 +1502,15 @@ export default function PharmacyView() {
                 />
               </div>
               <div className="sm:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="pharmacy-duty-note">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-duty-note"
+                >
                   Note de garde (optionnel)
                 </label>
                 <input
                   id="pharmacy-duty-note"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   placeholder="Ex. Garde permanente de nuit · sonnette côté avenue"
                   maxLength={160}
                   value={pharmacy.dutyNote}
@@ -1465,7 +1522,10 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-lat">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-lat"
+                >
                   Latitude GPS
                 </label>
                 <input
@@ -1474,7 +1534,7 @@ export default function PharmacyView() {
                   step="any"
                   min={-90}
                   max={90}
-                  className="input font-mono text-xs"
+                  className="input h-12 font-mono text-[15px]"
                   value={latInput}
                   onChange={(event) =>
                     handleCoordsChange(event.target.value, lngInput)
@@ -1482,7 +1542,10 @@ export default function PharmacyView() {
                 />
               </div>
               <div>
-                <label className="label" htmlFor="pharmacy-lng">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="pharmacy-lng"
+                >
                   Longitude GPS
                 </label>
                 <input
@@ -1491,7 +1554,7 @@ export default function PharmacyView() {
                   step="any"
                   min={-180}
                   max={180}
-                  className="input font-mono text-xs"
+                  className="input h-12 font-mono text-[15px]"
                   value={lngInput}
                   onChange={(event) =>
                     handleCoordsChange(latInput, event.target.value)
@@ -1503,7 +1566,7 @@ export default function PharmacyView() {
                   type="button"
                   disabled={gpsBusy}
                   onClick={captureGpsPosition}
-                  className="btn-secondary w-full text-xs sm:w-auto"
+                  className="btn-secondary h-12 w-full px-5 text-[15px] sm:w-auto"
                   title="Renseigner les coordonnées GPS actuelles"
                 >
                   <IconCrosshair className="h-4 w-4" />
@@ -1515,7 +1578,7 @@ export default function PharmacyView() {
             {nameError || hoursError || coordsError ? (
               <p
                 role="alert"
-                className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
               >
                 {nameError ?? hoursError ?? coordsError}
               </p>
@@ -1524,8 +1587,8 @@ export default function PharmacyView() {
         </div>
       )}
 
-      <div className="flex items-start gap-2.5 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
-        <IconShield className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
+      <div className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-600">
+        <IconShield className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
         <p>
           Le stock et les prix affichés sont purement déclaratifs. Kéné
           n&apos;appartient pas au corps médical, ne vend pas de médicaments et

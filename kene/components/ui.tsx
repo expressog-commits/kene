@@ -10,21 +10,21 @@ export function cn(...values: (string | false | null | undefined)[]): string {
 export type BadgeTone = "neutral" | "green" | "amber" | "red" | "blue" | "violet";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  neutral: "bg-slate-100/90 text-slate-700 ring-1 ring-inset ring-slate-200/80",
-  green: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
-  amber: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
-  red: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/80",
-  blue: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/80",
-  violet: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200/80",
+  neutral: "bg-slate-100 text-slate-800 ring-1 ring-inset ring-slate-300/80",
+  green: "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200",
+  amber: "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-300/80",
+  red: "bg-rose-50 text-rose-900 ring-1 ring-inset ring-rose-200",
+  blue: "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200",
+  violet: "bg-violet-50 text-violet-900 ring-1 ring-inset ring-violet-200",
 };
 
 const BADGE_DOTS: Record<BadgeTone, string> = {
-  neutral: "bg-slate-400",
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-rose-500",
-  blue: "bg-sky-500",
-  violet: "bg-violet-500",
+  neutral: "bg-slate-600",
+  green: "bg-emerald-600",
+  amber: "bg-amber-600",
+  red: "bg-rose-600",
+  blue: "bg-sky-600",
+  violet: "bg-violet-600",
 };
 
 export function Badge({
@@ -41,12 +41,18 @@ export function Badge({
   className?: string;
 }) {
   return (
-    <span className={cn("chip", BADGE_TONES[tone], className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-semibold leading-tight",
+        BADGE_TONES[tone],
+        className,
+      )}
+    >
       {dot ? (
         <span
           aria-hidden="true"
           className={cn(
-            "h-1.5 w-1.5 shrink-0 rounded-full",
+            "h-2 w-2 shrink-0 rounded-full",
             BADGE_DOTS[tone],
             pulse && "animate-pulse",
           )}
@@ -142,7 +148,7 @@ export function Modal({
       <button
         aria-label="Fermer"
         onClick={onClose}
-        className="absolute inset-0 bg-ink-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
       />
       <div
         ref={dialogRef}
@@ -151,22 +157,23 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-lift sm:rounded-2xl",
+          "relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200/90 bg-white shadow-lift sm:rounded-2xl",
           width,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 px-6 py-5">
           <div>
-            <h2 id={titleId} className="text-lg font-semibold text-ink-900">
+            <h2 id={titleId} className="font-display text-xl font-bold text-slate-900">
               {title}
             </h2>
             {subtitle ? (
-              <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+              <p className="mt-1 text-[15px] text-slate-600">{subtitle}</p>
             ) : null}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-ink-900"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Fermer"
           >
             <IconClose className="h-5 w-5" />
@@ -174,7 +181,7 @@ export function Modal({
         </div>
         <div className="scroll-thin flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer ? (
-          <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-200/80 bg-slate-50/80 px-6 py-4">
             {footer}
           </div>
         ) : null}
@@ -200,13 +207,13 @@ export function Toggle({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition",
-        checked ? "bg-brand-500" : "bg-slate-300",
+        "relative h-7 w-12 shrink-0 rounded-full transition",
+        checked ? "bg-brand-700" : "bg-slate-300",
       )}
     >
       <span
         className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+          "absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition",
           checked ? "left-[22px]" : "left-0.5",
         )}
       />
@@ -223,7 +230,7 @@ export function SectionTitle({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">
         {title}
       </h2>
       {action}

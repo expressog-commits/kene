@@ -29,15 +29,15 @@ export interface PharmacyMapProps {
 }
 
 const PIN_COLORS: Record<"green" | "amber" | "red", string> = {
-  green: "#0B7E72",
-  amber: "#D98B12",
-  red: "#E11D48",
+  green: "#045D56",
+  amber: "#B45309",
+  red: "#BE123C",
 };
 
 const POPUP_BADGE_STYLES: Record<"green" | "amber" | "red", { bg: string; fg: string }> = {
-  green: { bg: "#ECFDF5", fg: "#047857" },
-  amber: { bg: "#FFFBEB", fg: "#B45309" },
-  red: { bg: "#FFF1F2", fg: "#BE123C" },
+  green: { bg: "#ECFDF5", fg: "#065F46" },
+  amber: { bg: "#FFFBEB", fg: "#92400E" },
+  red: { bg: "#FFF1F2", fg: "#9F1239" },
 };
 
 function escapeHtml(value: string): string {
@@ -67,29 +67,29 @@ function buildPopupHtml(
   const badgePalette = POPUP_BADGE_STYLES[badgeTone];
 
   const parts: string[] = [
-    `<div style="min-width:215px;max-width:265px;font-family:inherit;color:#0B1F1D;">`,
-    `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">`,
-    `<strong style="font-size:13px;font-weight:700;line-height:1.3;">${escapeHtml(pharmacy.name)}</strong>`,
+    `<div style="min-width:240px;max-width:290px;font-family:inherit;color:#0F172A;">`,
+    `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">`,
+    `<strong style="font-size:14px;font-weight:700;line-height:1.35;color:#0F172A;">${escapeHtml(pharmacy.name)}</strong>`,
     priceLabel
-      ? `<span style="font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:#0B7E72;">${escapeHtml(priceLabel)}</span>`
+      ? `<span style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:#045D56;">${escapeHtml(priceLabel)}</span>`
       : "",
     `</div>`,
-    `<p style="margin:4px 0 0;font-size:11px;color:#475569;">${escapeHtml(pharmacy.quartier)} · <strong style="color:#0B1F1D;">${escapeHtml(distanceLabel(distanceKm))}</strong></p>`,
-    `<p style="margin:2px 0 0;font-size:11px;color:#64748b;">${escapeHtml(openingLabel(pharmacy))}</p>`,
+    `<p style="margin:6px 0 0;font-size:13px;line-height:1.4;color:#334155;">${escapeHtml(pharmacy.quartier)} · <strong style="color:#0F172A;">${escapeHtml(distanceLabel(distanceKm))}</strong></p>`,
+    `<p style="margin:3px 0 0;font-size:13px;line-height:1.4;color:#475569;">${escapeHtml(openingLabel(pharmacy))}</p>`,
     badgeText
-      ? `<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600;background:${badgePalette.bg};color:${badgePalette.fg};">${escapeHtml(badgeText)}</span>`
+      ? `<span style="display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${badgePalette.bg};color:${badgePalette.fg};">${escapeHtml(badgeText)}</span>`
       : "",
     subtitle
-      ? `<p style="margin:6px 0 0;font-size:11px;color:#334155;">${escapeHtml(subtitle)}</p>`
+      ? `<p style="margin:8px 0 0;font-size:13px;line-height:1.4;color:#334155;">${escapeHtml(subtitle)}</p>`
       : "",
-    `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">`,
-    `<a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noreferrer" style="background:#0B7E72;color:#ffffff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none;">Itinéraire</a>`,
-    `<a href="${escapeHtml(telHref)}" style="border:1px solid #cbd5e1;background:#ffffff;color:#0B1F1D;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none;">Appeler</a>`,
+    `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">`,
+    `<a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noreferrer" style="display:inline-flex;align-items:center;justify-content:center;background:#045D56;color:#ffffff;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">Itinéraire</a>`,
+    `<a href="${escapeHtml(telHref)}" style="display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #cbd5e1;background:#ffffff;color:#0F172A;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">Appeler</a>`,
   ];
 
   if (waText) {
     parts.push(
-      `<a href="${escapeHtml(waLink(pharmacy.whatsapp, waText))}" target="_blank" rel="noreferrer" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none;">WhatsApp</a>`,
+      `<a href="${escapeHtml(waLink(pharmacy.whatsapp, waText))}" target="_blank" rel="noreferrer" style="display:inline-flex;align-items:center;justify-content:center;background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">WhatsApp</a>`,
     );
   }
 
@@ -108,28 +108,28 @@ function buildPinIcon(
   if (priceLabel) {
     const dotColor = isActive ? "#FFFFFF" : toneColor;
     const pillStyle = isActive
-      ? "background:#0B7E72;color:#FFFFFF;border:1.5px solid #FFFFFF;box-shadow:0 12px 26px -6px rgba(11,126,114,0.52),0 0 0 3px rgba(11,126,114,0.24);"
-      : "background:#FFFFFF;color:#0B1F1D;border:1.5px solid #0B7E72;box-shadow:0 6px 16px -4px rgba(11,31,29,0.2),0 1px 3px rgba(11,31,29,0.08);";
+      ? "background:#045D56;color:#FFFFFF;border:2px solid #FFFFFF;box-shadow:0 12px 26px -6px rgba(4,93,86,0.52),0 0 0 3px rgba(4,93,86,0.28);"
+      : "background:#FFFFFF;color:#0F172A;border:2px solid #045D56;box-shadow:0 6px 16px -4px rgba(15,23,42,0.2),0 1px 3px rgba(15,23,42,0.08);";
 
     return L.divIcon({
       className: "kene-price-pin",
-      html: `<div style="position:relative;width:max-content;pointer-events:auto;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:9999px;font-family:inherit;font-size:11px;font-weight:700;line-height:1.1;white-space:nowrap;font-variant-numeric:tabular-nums;transform-origin:bottom center;transform:translate(-50%,-100%) scale(${isActive ? "1.12" : "1"});transition:transform 160ms ease,background-color 160ms ease,box-shadow 160ms ease;${pillStyle}"><span style="width:6px;height:6px;border-radius:9999px;flex-shrink:0;background:${dotColor};"></span><span>${escapeHtml(priceLabel)}</span></div>`,
+      html: `<div style="position:relative;width:max-content;pointer-events:auto;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9999px;font-family:inherit;font-size:13px;font-weight:700;line-height:1.15;white-space:nowrap;font-variant-numeric:tabular-nums;transform-origin:bottom center;transform:translate(-50%,-100%) scale(${isActive ? "1.12" : "1"});transition:transform 160ms ease,background-color 160ms ease,box-shadow 160ms ease;${pillStyle}"><span style="width:7px;height:7px;border-radius:9999px;flex-shrink:0;background:${dotColor};"></span><span>${escapeHtml(priceLabel)}</span></div>`,
       iconSize: [0, 0],
       iconAnchor: [0, 0],
-      popupAnchor: [0, -34],
+      popupAnchor: [0, -38],
     });
   }
 
   const circleShadow = isActive
-    ? "box-shadow:0 10px 24px -4px rgba(11,126,114,0.45),0 0 0 5px rgba(11,126,114,0.24);"
-    : "box-shadow:0 6px 16px -4px rgba(11,31,29,0.26);";
+    ? "box-shadow:0 10px 24px -4px rgba(4,93,86,0.48),0 0 0 5px rgba(4,93,86,0.26);"
+    : "box-shadow:0 6px 16px -4px rgba(15,23,42,0.28);";
 
   return L.divIcon({
     className: "kene-pharmacy-pin",
-    html: `<div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;cursor:pointer;"><span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9999px;background:${toneColor};border:2.5px solid #FFFFFF;transform:scale(${isActive ? "1.18" : "1"});transition:transform 160ms ease,box-shadow 160ms ease;${circleShadow}"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/></svg></span></div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -18],
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;cursor:pointer;"><span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9999px;background:${toneColor};border:2.5px solid #FFFFFF;transform:scale(${isActive ? "1.14" : "1"});transition:transform 160ms ease,box-shadow 160ms ease;${circleShadow}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/></svg></span></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20],
   });
 }
 
@@ -143,22 +143,22 @@ function MapLegend({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] font-medium text-slate-600",
+        "flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs font-medium text-slate-700",
         floating
-          ? "pointer-events-none absolute bottom-3 left-3 z-[400] rounded-full border border-slate-200/80 bg-white/90 px-3 py-1.5 shadow-soft backdrop-blur-md"
+          ? "pointer-events-none absolute bottom-3 left-3 z-[400] rounded-full border border-slate-200/90 bg-white/95 px-3.5 py-2 shadow-soft backdrop-blur-md"
           : "px-1",
       )}
     >
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-brand-500" />
+        <span className="h-2.5 w-2.5 rounded-full bg-brand-700" />
         En stock / de garde
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-sun-500" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
         Stock faible / partiel
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-rose-600" />
+        <span className="h-2.5 w-2.5 rounded-full bg-rose-700" />
         Rupture
       </span>
       {showUserLocation ? (
@@ -253,7 +253,7 @@ export default function PharmacyMap({
         });
         L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
           .bindPopup(
-            `<strong style="font-size:12px;color:#0B1F1D;">Votre position GPS</strong>`,
+            `<strong style="font-size:13px;color:#0F172A;">Votre position GPS</strong>`,
           )
           .addTo(layer);
         bounds.push([userLocation.lat, userLocation.lng]);

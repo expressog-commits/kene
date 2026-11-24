@@ -1,35 +1,24 @@
-import ThreeHeroScene from "@/components/ThreeHeroScene";
 import {
-  IconAlert,
   IconArrowRight,
   IconBed,
   IconCheck,
-  IconClock,
-  IconCrosshair,
-  IconDownload,
-  IconList,
   IconLogo,
-  IconMap,
   IconMapPin,
   IconNavigation,
   IconPharmacy,
   IconPhone,
-  IconPill,
   IconSearch,
   IconShield,
 } from "@/components/icons";
-import { Capsule3D, GlowOrb, GlassChip, BedGrid3D } from "@/components/visuals";
 import {
-  LEVEL_META,
   dutyPharmacies,
   emergencySummary,
   filterHospitals,
-  openingLabel,
   publicPharmacies,
-  searchMedicine,
 } from "@/lib/engine";
 import { FEATURES } from "@/lib/features";
-import { distanceLabel, fcfaShort } from "@/lib/format";
+import { distanceLabel } from "@/lib/format";
+import { mapsDirectionsLink } from "@/lib/geo";
 import { seedState } from "@/lib/seed";
 import { ensureSeeded, loadPublicState } from "@/lib/server/db";
 
@@ -37,33 +26,31 @@ export const dynamic = "force-dynamic";
 
 const STEPS = [
   {
-    title: "Tapez le nom du médicament",
-    body: "Recherchez un produit (ex : Paracétamol, Amoxicilline) ou plusieurs médicaments à la fois en quelques secondes.",
+    title: "Tapez le nom de votre médicament",
+    body: "Recherchez un médicament ou ajoutez toute votre ordonnance. Aucun compte ni inscription n'est nécessaire.",
   },
   {
-    title: "Voyez les pharmacies ouvertes et le prix",
-    body: "Activez « Autour de moi », filtrez les pharmacies de garde 24 h/24 et comparez le stock et le prix affiché sur liste ou carte.",
+    title: "Voyez où il est disponible et à quel prix",
+    body: "Comparez les pharmacies ouvertes ou de garde autour de vous, avec le stock indiqué et le prix avant de partir.",
   },
   {
-    title: "Lancez l'itinéraire, appelez ou écrivez sur WhatsApp",
-    body: "Ouvrez directement Google Maps, appelez la pharmacie ou envoyez un message WhatsApp avant de vous déplacer.",
+    title: "Lancez l'itinéraire ou appelez la pharmacie",
+    body: "Ouvrez Google Maps en un clic, appelez l'officine ou confirmez sur WhatsApp avant de vous déplacer.",
   },
-];
+] as const;
 
-const PHARMACY_FEATURES = [
-  "Stock et prix modifiables en quelques secondes",
-  "Import CSV / Excel en masse jusqu'à 200 lignes",
-  "Ajout et retrait de médicaments en un clic",
-  "Mise en avant « de garde 24 h/24 » avec note dédiée",
-  "Inscription immédiate de votre officine",
-  "Fiche pharmacie, position GPS et WhatsApp à jour",
-];
+const PHARMACY_BENEFITS = [
+  "Inscription gratuite et immédiate de votre officine",
+  "Mise à jour des stocks et des prix en quelques secondes (ou par fichier CSV/Excel)",
+  "Signalement de vos gardes 24 h/24 visible par les patients à proximité",
+  "Aucun paiement ni vente en ligne : les patients viennent au comptoir",
+] as const;
 
-const QUICK_LINKS = [
+const QUICK_PILLS = [
   { label: "Paracétamol", href: "/app?view=search&q=Parac%C3%A9tamol" },
   { label: "Amoxicilline", href: "/app?view=search&q=Amoxicilline" },
   { label: "Artéméther", href: "/app?view=search&q=Art%C3%A9m%C3%A9ther" },
-  { label: "Doliprane", href: "/app?view=search&q=Doliprane" },
+  { label: "Pharmacies de garde", href: "/app?view=duty" },
 ] as const;
 
 export default async function LandingPage() {
@@ -77,55 +64,8 @@ export default async function LandingPage() {
 
   const verified = publicPharmacies(state);
   const dutyList = dutyPharmacies(state);
+  const featuredDuty = dutyList.slice(0, 4);
   const beds = emergencySummary(state);
-
-  const artemetherMatches = searchMedicine(state, "Artéméther", {
-    quartier: "Tous",
-    onlyOpen: false,
-    onlyDuty: false,
-    onlyInStock: false,
-    sort: "distance",
-  });
-
-  const seenHeroPharmacies = new Set<string>();
-  const heroRows: Array<{
-    id: string;
-    name: string;
-    area: string;
-    price: string;
-    tone: "green" | "amber" | "red";
-    note: string;
-  }> = [];
-
-  for (const row of artemetherMatches) {
-    if (seenHeroPharmacies.has(row.pharmacy.id)) continue;
-    seenHeroPharmacies.add(row.pharmacy.id);
-    const meta = LEVEL_META[row.level];
-    heroRows.push({
-      id: row.pharmacy.id,
-      name: row.pharmacy.name,
-      area: `${row.pharmacy.quartier} · ${distanceLabel(row.distanceKm)}`,
-      price: row.level === "out" ? "—" : fcfaShort(row.stock.price),
-      tone: meta.tone,
-      note: meta.label,
-    });
-    if (heroRows.length >= 3) break;
-  }
-
-  if (heroRows.length === 0) {
-    for (const pharmacy of verified.slice(0, 3)) {
-      heroRows.push({
-        id: pharmacy.id,
-        name: pharmacy.name,
-        area: `${pharmacy.quartier} · ${distanceLabel(pharmacy.distanceKm)}`,
-        price: "En rayon",
-        tone: "green",
-        note: openingLabel(pharmacy),
-      });
-    }
-  }
-
-  const heroMatchCount = new Set(artemetherMatches.map((row) => row.pharmacy.id)).size;
 
   const bedsSample = FEATURES.hospitals
     ? filterHospitals(state, {
@@ -135,6 +75,7 @@ export default async function LandingPage() {
       })
         .slice(0, 4)
         .map((row) => ({
+          id: row.hospital.id,
           name: row.hospital.name,
           area: `${row.hospital.quartier} · ${distanceLabel(row.hospital.distanceKm)}`,
           free: row.available,
@@ -143,649 +84,472 @@ export default async function LandingPage() {
     : [];
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-sand">
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-sand/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5">
-          <a href="/" className="flex items-center gap-2.5">
-            <IconLogo className="h-8 w-8 text-brand-500" />
-            <span className="text-lg font-semibold tracking-tight text-ink-900">Kéné</span>
+    <div className="min-h-screen bg-canvas text-slate-900">
+      <a href="#contenu" className="skip-link">
+        Aller au contenu principal
+      </a>
+
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <a
+            href="/"
+            className="group flex items-center gap-2.5 rounded-xl focus-visible:outline-offset-4"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200/70 transition group-hover:bg-brand-100/80">
+              <IconLogo className="h-6 w-6" />
+            </span>
+            <span className="font-display text-lg font-bold tracking-tight text-slate-900">
+              Kéné
+            </span>
           </a>
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            {FEATURES.hospitals ? (
-              <a href="#urgences" className="transition hover:text-ink-900">
-                Urgences
-              </a>
-            ) : (
-              <a href="#garde" className="transition hover:text-ink-900">
-                De garde
-              </a>
-            )}
-            <a href="#fonctionnement" className="transition hover:text-ink-900">
-              Fonctionnement
+
+          <nav
+            aria-label="Navigation principale"
+            className="flex items-center gap-2 sm:gap-3"
+          >
+            <a
+              href="/app?view=duty"
+              className="hidden min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-[15px] font-semibold text-slate-700 transition hover:bg-slate-100/80 hover:text-brand-700 md:inline-flex"
+            >
+              <span>Pharmacies de garde</span>
+              {dutyList.length > 0 ? (
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-50 px-1.5 text-[13px] font-bold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                  {dutyList.length}
+                </span>
+              ) : null}
             </a>
-            <a href="#tarifs" className="transition hover:text-ink-900">
-              Modèle économique
+
+            {FEATURES.hospitals ? (
+              <a
+                href="/app?view=emergency"
+                className="hidden min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-[15px] font-semibold text-slate-700 transition hover:bg-slate-100/80 hover:text-brand-700 lg:inline-flex"
+              >
+                <IconBed className="h-4 w-4 text-brand-700" />
+                <span>Urgences</span>
+              </a>
+            ) : null}
+
+            <a
+              href="/app?view=pharmacy"
+              className="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 transition hover:border-brand-700 hover:bg-brand-50/40 hover:text-brand-800 sm:px-4 sm:text-[15px]"
+            >
+              <IconPharmacy className="h-4 w-4 shrink-0 text-brand-700" />
+              <span className="sm:hidden">Pharmacien ?</span>
+              <span className="hidden sm:inline">Vous êtes pharmacien ?</span>
+            </a>
+
+            <a
+              href="tel:185"
+              className="inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-xl bg-rose-50 px-3 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200/80 transition hover:bg-rose-100 sm:px-3.5"
+            >
+              <IconPhone className="h-4 w-4 shrink-0" />
+              <span>SAMU 185</span>
             </a>
           </nav>
-          <a href="/app?view=search" className="btn-primary px-4 py-2 text-xs sm:text-sm">
-            Ouvrir Kéné
-            <IconArrowRight className="h-4 w-4" />
-          </a>
         </div>
       </header>
 
-      <main>
-        <section className="relative overflow-hidden">
-          <div className="mesh-grid absolute inset-0" />
-          <GlowOrb className="-right-24 -top-24 h-[26rem] w-[26rem]" tone="brand" />
-          <GlowOrb className="-bottom-32 -left-24 h-[22rem] w-[22rem]" tone="sun" />
+      <main id="contenu" tabIndex={-1} className="focus:outline-none">
+        <section className="bg-brand-700 bg-gradient-to-br from-[#045D56] via-brand-700 to-[#034A44] py-14 sm:py-20">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-emerald-50 ring-1 ring-inset ring-white/15">
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-emerald-300"
+              />
+              {FEATURES.hospitals
+                ? `Abidjan · ${verified.length} pharmacies vérifiées · ${beds.centers} hôpitaux`
+                : `Abidjan · ${verified.length} pharmacies vérifiées · ${dutyList.length} de garde 24h/24`}
+            </p>
 
-          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.04fr_0.96fr] lg:py-16">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-200/70 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-brand-700 backdrop-blur">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
-                {FEATURES.hospitals
-                  ? `Abidjan · ${verified.length} pharmacies et ${beds.centers} hôpitaux`
-                  : `Abidjan · ${verified.length} pharmacies · ${dutyList.length} de garde 24 h/24`}
-              </span>
-              <h1 className="mt-5 text-[2.45rem] font-semibold leading-[1.05] tracking-tight text-ink-900 sm:text-5xl">
-                Votre médicament est en stock.
-                <span className="block bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 bg-clip-text text-transparent">
-                  On vous dit où, et à quel prix.
-                </span>
-              </h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-                {FEATURES.hospitals ? (
-                  <>
-                    Trouvez en quelques secondes quelles pharmacies ont votre médicament
-                    en stock, à quel prix et à quelle distance GPS — ainsi que les{" "}
-                    <strong>lits libres aux urgences</strong> des hôpitaux d&apos;Abidjan.
-                  </>
-                ) : (
-                  <>
-                    Trouvez en quelques secondes quelles pharmacies d&apos;Abidjan ont
-                    votre médicament ou toute votre ordonnance en rayon, à quel prix et à
-                    quelle distance GPS — avec accès direct aux{" "}
-                    <strong>pharmacies de garde 24 h/24</strong> et à la carte.
-                  </>
-                )}
-              </p>
+            <h1 className="font-display max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-5xl">
+              Trouvez votre médicament en pharmacie à Abidjan.
+            </h1>
 
-              <form
-                action="/app"
-                method="GET"
-                className="mt-6 flex flex-col gap-2.5 sm:flex-row"
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-50/90 sm:text-lg">
+              {FEATURES.hospitals
+                ? "Voyez quelles pharmacies l'ont en stock et à quel prix avant de vous déplacer, ainsi que les lits disponibles aux urgences. Gratuit et sans inscription."
+                : "Voyez quelles pharmacies l'ont en stock et à quel prix avant de vous déplacer. Gratuit et sans inscription."}
+            </p>
+
+            <form
+              action="/app"
+              method="GET"
+              role="search"
+              aria-label="Rechercher un médicament en pharmacie"
+              className="mt-8 flex max-w-3xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-lift focus-within:ring-4 focus-within:ring-white/25 sm:flex-row sm:items-center"
+            >
+              <input type="hidden" name="view" value="search" />
+              <div className="relative flex flex-1 items-center">
+                <IconSearch className="pointer-events-none absolute left-3.5 h-5 w-5 text-brand-700" />
+                <input
+                  type="search"
+                  name="q"
+                  aria-label="Nom du médicament"
+                  placeholder="Ex : Paracétamol, Amoxicilline, Artéméther…"
+                  className="h-14 w-full rounded-xl bg-transparent pl-11 pr-3 text-base text-slate-900 placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-7 text-base font-bold text-white transition hover:bg-brand-800 active:scale-[0.98] sm:h-14"
               >
-                <input type="hidden" name="view" value="search" />
-                <div className="relative flex-1">
-                  <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="search"
-                    name="q"
-                    aria-label="Rechercher un médicament"
-                    placeholder="Ex : Paracétamol, Amoxicilline, Artéméther…"
-                    className="input bg-white py-3.5 pl-11 pr-3 shadow-card"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn-primary whitespace-nowrap px-6 py-3.5 shadow-[0_18px_30px_-14px_rgba(11,126,114,0.9)]"
-                >
-                  <IconSearch className="h-4 w-4" />
-                  Trouver
-                </button>
-              </form>
+                <IconSearch className="h-5 w-5 sm:hidden" />
+                <span>Rechercher</span>
+              </button>
+            </form>
 
-              <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                {QUICK_LINKS.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-ink-900 transition hover:border-brand-400 hover:bg-brand-50"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-                {FEATURES.hospitals ? (
-                  <a
-                    href="/app?view=emergency"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
-                  >
-                    <IconBed className="h-3.5 w-3.5" />
-                    Voir les lits d&apos;urgence
-                  </a>
-                ) : (
-                  <a
-                    href="/app?view=duty"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
-                  >
-                    <IconClock className="h-3.5 w-3.5" />
-                    Pharmacies de garde ({dutyList.length})
-                  </a>
-                )}
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <IconCheck className="h-3.5 w-3.5 text-brand-500" />
-                  100 % gratuit pour les patients
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <IconList className="h-3.5 w-3.5 text-brand-500" />
-                  Un médicament ou toute une liste
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <IconCrosshair className="h-3.5 w-3.5 text-brand-500" />
-                  GPS, carte &amp; app mobile
-                </span>
-              </div>
-            </div>
-
-            <div className="relative">
-              <ThreeHeroScene variant="hero" className="mb-4" />
-
-              <div className="relative rounded-2xl border border-white/70 bg-white/95 p-5 shadow-[0_50px_90px_-40px_rgba(11,31,29,0.55)] backdrop-blur">
-                <GlassChip className="float-y -top-5 right-4 z-20 mb-2 inline-flex items-center gap-2 sm:absolute sm:mb-0">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500 text-white">
-                    <IconPill className="h-3.5 w-3.5" />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-semibold text-ink-900">
-                      {state.medicines.length} médicaments
-                    </p>
-                    <p className="text-[9px] text-slate-500">
-                      dans {verified.length} pharmacies
-                    </p>
-                  </div>
-                </GlassChip>
-
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
+              {QUICK_PILLS.map((pill) => (
                 <a
-                  href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-400"
+                  key={pill.label}
+                  href={pill.href}
+                  className="inline-flex min-h-[40px] items-center rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/25"
                 >
-                  <IconSearch className="h-4 w-4 text-slate-400" />
-                  <span className="text-xs text-slate-700">
-                    Artéméther-Luméfantrine 20/120
-                  </span>
-                  <span className="ml-auto rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
-                    {heroMatchCount || verified.length} résultats
-                  </span>
+                  {pill.label}
                 </a>
-
-                <div className="mt-3 space-y-2">
-                  {heroRows.map((row) => (
-                    <a
-                      key={row.id}
-                      href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                      className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-3 transition hover:border-brand-200 hover:bg-slate-50/60"
-                    >
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          row.tone === "green"
-                            ? "bg-brand-50 text-brand-600"
-                            : row.tone === "amber"
-                              ? "bg-amber-50 text-amber-600"
-                              : "bg-red-50 text-red-500"
-                        }`}
-                      >
-                        <IconPill className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-ink-900">
-                          {row.name}
-                        </p>
-                        <p className="text-[10px] text-slate-500">{row.area}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-semibold text-ink-900">{row.price}</p>
-                        <p className="text-[10px] text-slate-500">{row.note}</p>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-
+              ))}
+              {FEATURES.hospitals ? (
                 <a
-                  href="/app?view=search&q=Art%C3%A9m%C3%A9ther"
-                  className="mt-4 flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 transition hover:bg-ink-800"
+                  href="/app?view=emergency"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/25"
                 >
-                  <div className="text-white">
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                      Contact direct
-                    </p>
-                    <p className="text-xs font-semibold">
-                      Itinéraire GPS · Appel · WhatsApp
-                    </p>
-                  </div>
-                  <span className="rounded-lg bg-brand-400 px-2.5 py-1.5 text-[10px] font-bold text-ink-900">
-                    Accès immédiat
-                  </span>
+                  <IconBed className="h-4 w-4 shrink-0" />
+                  Lits d&apos;urgence ({beds.available})
                 </a>
-              </div>
+              ) : null}
             </div>
           </div>
         </section>
 
-        <section id="fonctionnement" className="border-y border-slate-200/70 bg-white">
-          <div className="mx-auto w-full max-w-6xl px-5 py-16">
+        <section id="garde" className="bg-canvas py-14">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-                  Fonctionnement
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-900">
-                  Simple et rapide pour tout le monde.
+                <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Pharmacies de garde maintenant
                 </h2>
+                <p className="mt-1.5 text-[15px] text-slate-600">
+                  Permanence 24 h/24 à Abidjan — vérifiez l&apos;adresse et contactez
+                  directement la pharmacie.
+                </p>
               </div>
               <a
-                href="/app?view=search"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"
+                href="/app?view=duty"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700 transition hover:text-brand-800"
               >
-                Essayer maintenant
-                <IconArrowRight className="h-4 w-4" />
+                <span>Voir toutes les pharmacies de garde</span>
+                <span aria-hidden="true">→</span>
               </a>
             </div>
 
-            <div className="mt-9 grid gap-4 md:grid-cols-3">
-              {STEPS.map((step, index) => (
-                <div
-                  key={step.title}
-                  className="rounded-2xl bg-sand p-6 transition hover:shadow-card"
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-brand-700">
-                    {index + 1}.
-                  </span>
-                  <h3 className="mt-2 text-sm font-semibold text-ink-900">{step.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{step.body}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 grid gap-3 rounded-2xl border border-slate-200 p-5 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  icon: IconMapPin,
-                  label: "Par commune & GPS",
-                  text: "Plateau, Cocody, Yopougon, Adjamé, Marcory, Abobo, Koumassi…",
-                },
-                {
-                  icon: IconMap,
-                  label: "Vue carte interactive",
-                  text: "Visualisez les officines disponibles et de garde autour de vous.",
-                },
-                {
-                  icon: IconClock,
-                  label: "Garde 24 h/24",
-                  text: "Trouvez immédiatement la pharmacie ouverte la nuit et le week-end.",
-                },
-                {
-                  icon: IconDownload,
-                  label: "Installable sur mobile",
-                  text: "Application légère consultable même avec une connexion instable.",
-                },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="flex items-start gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                      <Icon className="h-4 w-4" />
-                    </span>
+            {featuredDuty.length > 0 ? (
+              <div className="mt-8 grid gap-5 md:grid-cols-2">
+                {featuredDuty.map(({ pharmacy, distanceKm }) => (
+                  <article
+                    key={pharmacy.id}
+                    className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-card transition hover:border-brand-500/50 hover:shadow-soft"
+                  >
                     <div>
-                      <p className="text-xs font-semibold text-ink-900">{item.label}</p>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-                        {item.text}
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <h3 className="text-lg font-bold leading-snug text-slate-900">
+                          {pharmacy.name}
+                        </h3>
+                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[13px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                          <span
+                            aria-hidden="true"
+                            className="h-2 w-2 rounded-full bg-emerald-600"
+                          />
+                          De garde 24h/24
+                        </span>
+                      </div>
+
+                      <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-medium text-slate-800">
+                        <IconMapPin className="h-4 w-4 shrink-0 text-brand-700" />
+                        <span>{pharmacy.quartier}</span>
+                        <span aria-hidden="true" className="text-slate-400">
+                          ·
+                        </span>
+                        <span className="font-semibold tabular-nums text-brand-700">
+                          {distanceLabel(distanceKm)}
+                        </span>
                       </p>
+
+                      <p className="mt-1.5 text-sm text-slate-600">
+                        {pharmacy.address}
+                      </p>
+
+                      {pharmacy.dutyNote ? (
+                        <p className="mt-3 rounded-xl bg-emerald-50/70 px-3.5 py-2 text-sm font-medium text-emerald-900">
+                          {pharmacy.dutyNote}
+                        </p>
+                      ) : null}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+
+                    <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
+                      <a
+                        href={mapsDirectionsLink(pharmacy)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-[15px] font-semibold text-white transition hover:bg-brand-800 active:scale-[0.98]"
+                      >
+                        <IconNavigation className="h-4 w-4 shrink-0" />
+                        Itinéraire
+                      </a>
+                      <a
+                        href={`tel:${pharmacy.phone.replace(/\s+/g, "")}`}
+                        className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-5 text-[15px] font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]"
+                      >
+                        <IconPhone className="h-4 w-4 shrink-0 text-brand-700" />
+                        Appeler
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-card">
+                <p className="text-[15px] font-medium text-slate-700">
+                  Consultez la liste complète et la carte interactive des pharmacies
+                  ouvertes à Abidjan.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                  <a
+                    href="/app?view=duty"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-700 px-6 text-[15px] font-semibold text-white transition hover:bg-brand-800"
+                  >
+                    Voir les pharmacies de garde
+                  </a>
+                  <a
+                    href="tel:185"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-6 text-[15px] font-semibold text-slate-900 transition hover:bg-slate-50"
+                  >
+                    <IconPhone className="h-4 w-4 text-rose-700" />
+                    SAMU 185
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
         {FEATURES.hospitals ? (
-          <section id="urgences" className="mx-auto w-full max-w-6xl px-5 py-16">
-            <div className="relative overflow-hidden rounded-3xl bg-ink-900 px-6 py-10 sm:px-10">
-              <div className="hero-grid absolute inset-0" />
-              <GlowOrb className="-right-20 top-0 h-72 w-72" tone="brand" />
-
-              <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_0.9fr]">
+          <section id="urgences" className="border-t border-slate-200/70 bg-canvas pb-14">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-brand-200">
-                    <IconBed className="h-3.5 w-3.5" />
-                    Urgences hospitalières
-                  </span>
-                  <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white">
-                    Un lit libre, avant de prendre la route.
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    Lits disponibles aux urgences
                   </h2>
-                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-                    Aux heures où chaque minute compte, savoir quel service d&apos;urgence
-                    a de la place change tout. Kéné affiche les lits libres par hôpital et
-                    par service avec le temps d&apos;attente estimé.
+                  <p className="mt-1.5 text-[15px] text-slate-600">
+                    {beds.available} lits libres signalés dans {beds.centers} hôpitaux
+                    à Abidjan.
                   </p>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    {bedsSample.map((item) => (
-                      <div
-                        key={item.name}
-                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 backdrop-blur"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-400/15 text-brand-300">
-                          <IconBed className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11px] font-semibold text-white">
-                            {item.name}
-                          </p>
-                          <p className="text-[10px] text-slate-400">{item.area}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-brand-300">{item.free}</p>
-                          <p className="text-[9px] text-slate-400">
-                            {item.wait === "complet" ? "complet" : `≈ ${item.wait}`}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <a
-                      href="/app?view=emergency"
-                      className="btn bg-white px-4 py-2.5 text-xs text-ink-900 hover:bg-slate-100"
-                    >
-                      <IconBed className="h-4 w-4" />
-                      Voir les lits aux urgences
-                    </a>
-                    <span className="text-[11px] text-slate-400">
-                      {beds.available} lits libres dans {beds.centers} hôpitaux
-                    </span>
-                  </div>
                 </div>
+                <a
+                  href="/app?view=emergency"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700 transition hover:text-brand-800"
+                >
+                  <span>Voir tous les services d&apos;urgence</span>
+                  <IconArrowRight className="h-4 w-4" />
+                </a>
+              </div>
 
-                <div>
-                  <BedGrid3D className="h-64" />
-                </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {bedsSample.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                        <IconBed className="h-5 w-5" />
+                      </span>
+                      <span className="text-lg font-bold tabular-nums text-brand-700">
+                        {item.free} {item.free > 1 ? "lits" : "lit"}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-base font-bold text-slate-900">
+                      {item.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">{item.area}</p>
+                    <p className="mt-2 text-sm font-medium text-slate-700">
+                      Attente estimée : {item.wait}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
-        ) : (
-          <section id="garde" className="mx-auto w-full max-w-6xl px-5 py-16">
-            <div className="relative overflow-hidden rounded-3xl bg-ink-900 px-6 py-10 sm:px-10">
-              <div className="hero-grid absolute inset-0" />
-              <GlowOrb className="-right-20 top-0 h-72 w-72" tone="brand" />
+        ) : null}
 
-              <div className="relative grid items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-                <div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-brand-200">
-                    <IconClock className="h-3.5 w-3.5" />
-                    Permanence 24 h/24 · Abidjan
-                  </span>
-                  <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white">
-                    Pharmacies de garde, la nuit comme le week-end.
-                  </h2>
-                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-                    Retrouvez immédiatement les pharmacies signalées de garde, vérifiez
-                    leurs médicaments en stock et lancez l&apos;itinéraire GPS ou
-                    l&apos;appel en un geste.
-                  </p>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    {dutyList.slice(0, 4).map(({ pharmacy, distanceKm, inStockCount }) => (
-                      <div
-                        key={pharmacy.id}
-                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 backdrop-blur"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-400/15 text-brand-300">
-                          <IconPharmacy className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-white">
-                            {pharmacy.name}
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            {pharmacy.quartier} · {distanceLabel(distanceKm)}
-                          </p>
-                          {pharmacy.dutyNote ? (
-                            <p className="truncate text-[10px] text-brand-200">
-                              {pharmacy.dutyNote}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold text-brand-300">24 h/24</p>
-                          <p className="text-[9px] text-slate-400">{inStockCount} réf.</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <a
-                      href="/app?view=duty"
-                      className="btn bg-white px-4 py-2.5 text-xs text-ink-900 hover:bg-slate-100"
-                    >
-                      <IconNavigation className="h-4 w-4" />
-                      Voir les pharmacies de garde
-                    </a>
-                    <a
-                      href="tel:185"
-                      className="btn border border-white/20 px-4 py-2.5 text-xs text-white hover:bg-white/10"
-                    >
-                      <IconPhone className="h-4 w-4" />
-                      Urgence vitale : SAMU 185
-                    </a>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-300">
-                    Géolocalisation &amp; Carte
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    Trouvez l&apos;officine ouverte la plus proche de votre position.
-                  </p>
-                  <ul className="mt-4 space-y-2.5 text-xs text-slate-300">
-                    <li className="flex items-start gap-2">
-                      <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
-                      Calcul de distance GPS réel en temps réel
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
-                      Carte interactive OpenStreetMap sans inscription
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
-                      Itinéraire Google Maps, appel et WhatsApp directs
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section id="pharmacies" className="mx-auto w-full max-w-6xl px-5 pb-16">
-          <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-                Pour les pharmacies
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-900">
-                Votre stock devient votre vitrine.
+        <section
+          id="fonctionnement"
+          className="border-y border-slate-200/70 bg-white py-14"
+        >
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+            <div className="max-w-2xl">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Comment ça marche ?
               </h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
-                Un espace simple, pensé pour une officine de quartier : importez ou mettez
-                à jour votre stock en quelques secondes, signalez vos gardes 24 h/24 et
-                orientez les patients vers votre comptoir.
+              <p className="mt-2 text-[15px] text-slate-600">
+                Simple, gratuit et accessible à tous depuis votre téléphone ou votre
+                ordinateur.
               </p>
-              <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
-                {PHARMACY_FEATURES.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-xs text-slate-600">
-                    <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
-                    {feature}
+            </div>
+
+            <div className="mt-9 grid gap-8 md:grid-cols-3">
+              {STEPS.map((step, index) => (
+                <div key={step.title} className="flex flex-col items-start">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-700 text-base font-bold tabular-nums text-white">
+                    {index + 1}
+                  </span>
+                  <h3 className="mt-4 text-lg font-bold text-slate-900">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+                    {step.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="pharmacies" className="bg-canvas py-14">
+          <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-start lg:gap-12">
+            <div>
+              <p className="text-sm font-semibold text-brand-700">
+                Espace officine
+              </p>
+              <h2 className="font-display mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Vous êtes pharmacien ?
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-slate-600">
+                Rendez votre stock et vos gardes visibles aux patients d&apos;Abidjan
+                qui cherchent leurs médicaments autour de votre pharmacie.
+              </p>
+
+              <ul className="mt-6 space-y-3">
+                {PHARMACY_BENEFITS.map((benefit) => (
+                  <li
+                    key={benefit}
+                    className="flex items-start gap-3 text-[15px] text-slate-700"
+                  >
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-brand-700 ring-1 ring-inset ring-emerald-200">
+                      <IconCheck className="h-3.5 w-3.5" />
+                    </span>
+                    <span>{benefit}</span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-6">
-                <a href="/app?view=pharmacy" className="btn-primary text-xs">
-                  <IconPharmacy className="h-4 w-4" />
+
+              <div className="mt-7">
+                <a
+                  href="/app?view=pharmacy"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-700 px-6 text-[15px] font-semibold text-white transition hover:bg-brand-800 active:scale-[0.98]"
+                >
+                  <IconPharmacy className="h-5 w-5 shrink-0" />
                   Accéder à l&apos;espace pharmacie
                 </a>
               </div>
             </div>
 
             <div id="tarifs" className="space-y-4">
-              <div className="card border-brand-500 p-6 ring-1 ring-brand-200">
+              <div className="rounded-2xl border-2 border-brand-700/25 bg-white p-6 shadow-card">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="chip bg-brand-50 text-brand-700">
-                    Étape 1 · Aujourd&apos;hui
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[13px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                    Aujourd&apos;hui
                   </span>
-                  <span className="text-[11px] font-semibold text-brand-700">
-                    Accès 100 % gratuit
+                  <span className="text-sm font-semibold text-brand-700">
+                    100 % gratuit
                   </span>
                 </div>
-                <h3 className="mt-3 text-lg font-semibold text-ink-900">
-                  Financé par la Publicité &amp; les Partenariats Santé
+                <h3 className="mt-3 text-lg font-bold text-slate-900">
+                  Gratuit, financé par la publicité santé
                 </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                  L&apos;application est 100 % gratuite pour les patients et
-                  l&apos;inscription est gratuite pour toutes les pharmacies partenaires.
-                  Durant cette phase de croissance, Kéné se finance grâce aux espaces
-                  publicitaires dédiés aux acteurs de la santé et de la parapharmacie.
+                <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+                  L&apos;accès est gratuit pour tous les patients et pour toutes les
+                  pharmacies partenaires. Kéné est financée par la publicité dédiée
+                  aux acteurs de la santé et de la parapharmacie.
                 </p>
               </div>
 
-              <div className="card p-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="chip bg-sun-50 text-sun-800">
-                    Étape 2 · Demain
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[13px] font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
+                    Demain
                   </span>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-sm font-medium text-slate-600">
                     Une fois devenue la référence
                   </span>
                 </div>
-                <h3 className="mt-3 text-lg font-semibold text-ink-900">
-                  Abonnement Pharmacie
+                <h3 className="mt-3 text-lg font-bold text-slate-900">
+                  Abonnement pharmacies
                 </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                  Lorsque Kéné sera devenue la plateforme de référence au quotidien pour
-                  les patients, les pharmacies paieront un tarif d&apos;abonnement pour la
-                  visibilité en temps réel de leur stock, la mise en avant de garde et les
-                  outils de gestion avancés.
+                <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+                  Une fois que Kéné sera devenue la référence quotidienne à Abidjan,
+                  les officines souscriront un abonnement pour maintenir leur
+                  visibilité et leurs outils de mise à jour.
                 </p>
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="border-t border-slate-200/70 bg-white">
-          <div className="mx-auto w-full max-w-6xl px-5 py-14">
-            <div className="grid gap-8 lg:grid-cols-2">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-                  Cadre clair
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink-900">
-                  Information et orientation uniquement.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Kéné indique où trouver votre médicament et quelle pharmacie est ouverte,
-                  sans jamais remplacer votre médecin ni votre pharmacien.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  "Pas du corps médical : aucun diagnostic ni avis thérapeutique",
-                  "Pas de vente, de livraison ni de paiement en ligne",
-                  "Pas de réservation de médicament ni de lit d'urgence",
-                  "Le pharmacien et le médecin restent seuls décideurs",
-                ].map((line) => (
-                  <div
-                    key={line}
-                    className="rounded-xl border border-slate-200 px-4 py-3 text-xs leading-relaxed text-slate-600"
-                  >
-                    {line}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-8 flex items-start gap-2.5 rounded-xl bg-sun-50 px-4 py-3">
-              <IconAlert className="mt-0.5 h-4 w-4 shrink-0 text-sun-600" />
-              <p className="text-[11px] leading-relaxed text-sun-800">
-                Urgence vitale : appelez le <strong>185 (SAMU)</strong> ou rendez-vous au
-                centre de santé le plus proche. Kéné ne remplace ni un médecin, ni un
-                pharmacien.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-6xl px-5 py-16">
-          <div className="relative overflow-hidden rounded-3xl bg-ink-900 px-6 py-12 text-center sm:px-12">
-            <div className="hero-grid absolute inset-0" />
-            <GlowOrb className="-right-16 -top-16 h-56 w-56" tone="brand" />
-            <GlowOrb className="-bottom-20 -left-10 h-56 w-56" tone="sun" />
-            <Capsule3D className="absolute right-10 top-8 hidden h-10 w-20 rotate-45 opacity-90 sm:block" />
-            <p className="relative text-[11px] font-semibold uppercase tracking-wide text-brand-300">
-              Abidjan, maintenant
-            </p>
-            <h2 className="relative mx-auto mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white">
-              Trouvez votre médicament maintenant.
-            </h2>
-            <p className="relative mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-              Recherchez un produit, comparez toute une ordonnance ou localisez la
-              pharmacie de garde la plus proche.
-            </p>
-            <div className="relative mt-7 flex flex-wrap justify-center gap-3">
-              <a
-                href="/app?view=search"
-                className="btn bg-brand-400 px-5 py-3 text-ink-900 hover:bg-brand-300"
-              >
-                <IconSearch className="h-4 w-4" />
-                Ouvrir Kéné
-              </a>
-              <a
-                href="/app?view=duty"
-                className="btn border border-white/20 px-5 py-3 text-white hover:bg-white/10"
-              >
-                <IconClock className="h-4 w-4" />
-                Pharmacies de garde
-              </a>
-              <a
-                href="/app?view=pharmacy"
-                className="btn border border-white/20 px-5 py-3 text-white hover:bg-white/10"
-              >
-                <IconPharmacy className="h-4 w-4" />
-                Espace pharmacie
-              </a>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-slate-200/70 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2.5">
-            <IconLogo className="h-7 w-7 text-brand-500" />
-            <div>
-              <p className="text-sm font-semibold text-ink-900">Kéné</p>
-              <p className="text-[11px] text-slate-500">
-                Disponibilité en pharmacie et garde 24 h/24 · Abidjan
-              </p>
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200/70">
+                <IconLogo className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="font-display text-base font-bold text-slate-900">
+                  Kéné
+                </p>
+                <p className="text-sm text-slate-600">
+                  Disponibilité des médicaments et pharmacies de garde à Abidjan
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-semibold text-slate-700">
+              <a href="/app?view=search" className="hover:text-brand-700">
+                Rechercher un médicament
+              </a>
+              <a href="/app?view=duty" className="hover:text-brand-700">
+                Pharmacies de garde
+              </a>
+              {FEATURES.hospitals ? (
+                <a href="/app?view=emergency" className="hover:text-brand-700">
+                  Urgences
+                </a>
+              ) : null}
+              <a href="/app?view=pharmacy" className="hover:text-brand-700">
+                Espace pharmacie
+              </a>
+              <a href="tel:185" className="text-rose-800 hover:text-rose-900">
+                SAMU 185
+              </a>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
-            <a href="/app?view=search" className="hover:text-ink-900">
-              Application
+
+          <div className="mt-8 flex flex-col gap-2 border-t border-slate-200/80 pt-6 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <p className="inline-flex items-start gap-2">
+              <IconShield className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+              <span>
+                Information et orientation uniquement — pas de vente en ligne, ni
+                de réservation médicale.
+              </span>
+            </p>
+            <a
+              href="tel:185"
+              className="font-semibold text-rose-800 hover:text-rose-900"
+            >
+              Urgence vitale : appelez le SAMU 185
             </a>
-            <a href="/app?view=duty" className="hover:text-ink-900">
-              De garde
-            </a>
-            <a href="#tarifs" className="hover:text-ink-900">
-              Modèle économique
-            </a>
-            <span>Orientation gratuite · aucune vente en ligne</span>
           </div>
         </div>
       </footer>

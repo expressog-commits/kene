@@ -12,7 +12,6 @@ import {
   IconLogout,
   IconPharmacy,
 } from "../icons";
-import { BedGrid3D, Capsule3D, GlowOrb } from "../visuals";
 import { FEATURES } from "@/lib/features";
 import type { ProfessionalType } from "@/lib/types";
 
@@ -122,22 +121,22 @@ export default function ProfessionalAuth({
     );
 
     return (
-      <Card className="mx-auto max-w-xl rounded-3xl p-6 text-center shadow-card sm:p-8">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-          <IconLock className="h-5 w-5" />
+      <Card className="mx-auto max-w-xl rounded-3xl border border-slate-200/90 p-6 text-center shadow-card sm:p-8">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+          <IconLock className="h-6 w-6" />
         </span>
-        <h2 className="mt-4 text-lg font-semibold text-ink-900">
+        <h2 className="mt-4 font-display text-xl font-bold text-slate-900">
           Vous êtes connecté
         </h2>
-        <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-slate-500">
+        <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-slate-600">
           {establishment?.name ?? session.establishmentName} — ouvrez votre
           espace pour gérer vos stocks ou changez de compte.
         </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
             type="button"
             onClick={() => onOpenOther(targetType)}
-            className="btn-primary rounded-xl text-xs"
+            className="btn-primary h-12 rounded-xl px-5 text-[15px]"
           >
             <IconArrowRight className="h-4 w-4" />
             Ouvrir mon espace
@@ -148,7 +147,7 @@ export default function ProfessionalAuth({
               await signOut();
               notify("Déconnecté.");
             }}
-            className="btn-secondary rounded-xl text-xs"
+            className="btn-secondary h-12 rounded-xl px-5 text-[15px]"
           >
             <IconLogout className="h-4 w-4" />
             Changer de compte
@@ -239,59 +238,57 @@ export default function ProfessionalAuth({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[0.94fr_1.06fr]">
-      <div className="relative overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50/80 via-white to-emerald-50/40 p-6 shadow-card sm:p-8">
-        <GlowOrb className="-right-16 -top-20 h-56 w-56 opacity-45" tone="brand" />
+      <div className="rounded-3xl border border-brand-100 bg-brand-50/70 p-6 sm:p-8">
+        <Badge tone="green" dot>
+          Espace Pharmacie Kéné
+        </Badge>
+        <h1 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-slate-900 sm:text-[28px]">
+          Publiez vos stocks et vos gardes
+          <span className="block text-brand-700">en quelques clics.</span>
+        </h1>
+        <p className="mt-3 max-w-md text-[15px] leading-relaxed text-slate-700">
+          Connectez votre officine pour informer directement les patients de la
+          disponibilité de leurs médicaments, de vos horaires et de votre
+          position GPS.
+        </p>
 
-        <div className="relative">
-          <Badge tone="green" dot>
-            Espace Pharmacie Kéné
-          </Badge>
-          <h2 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-ink-900 sm:text-[26px]">
-            Publiez vos stocks et vos gardes
-            <span className="block text-brand-600">en quelques clics.</span>
-          </h2>
-          <p className="mt-3 max-w-sm text-xs leading-relaxed text-slate-600 sm:text-[13px]">
-            Connectez votre officine pour informer directement les patients de
-            la disponibilité de leurs médicaments, de vos horaires et de votre
-            position GPS.
-          </p>
+        <ul className="mt-6 space-y-3.5">
+          {benefitLines.map((line) => (
+            <li
+              key={line}
+              className="flex items-start gap-3 text-[15px] text-slate-800"
+            >
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                <IconCheck className="h-3.5 w-3.5" />
+              </span>
+              <span className="leading-relaxed">{line}</span>
+            </li>
+          ))}
+        </ul>
 
-          <ul className="mt-6 space-y-3">
-            {benefitLines.map((line) => (
-              <li
-                key={line}
-                className="flex items-start gap-2.5 text-xs text-slate-700"
-              >
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100/80 text-brand-700">
-                  <IconCheck className="h-3 w-3" />
-                </span>
-                <span className="leading-relaxed">{line}</span>
-              </li>
-            ))}
-          </ul>
-
-          {FEATURES.hospitals ? (
-            <BedGrid3D className="mt-6 h-40" />
-          ) : (
-            <div className="mt-7 flex items-center gap-4 rounded-2xl border border-brand-100/90 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
-              <Capsule3D className="h-12 w-24 shrink-0 -rotate-12" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-ink-900">
-                  Stocks visibles en temps réel
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
-                  Mettez à jour vos prix, vos gardes 24h/24 et votre position
-                  GPS à tout moment.
-                </p>
-              </div>
-            </div>
-          )}
+        <div className="mt-7 flex items-start gap-4 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+            {FEATURES.hospitals && type === "hospital" ? (
+              <IconHospital className="h-5 w-5" />
+            ) : (
+              <IconPharmacy className="h-5 w-5" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-slate-900">
+              Stocks visibles en temps réel
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Mettez à jour vos prix, vos gardes 24h/24 et votre position GPS à
+              tout moment depuis ordinateur ou mobile.
+            </p>
+          </div>
         </div>
       </div>
 
-      <Card className="rounded-3xl p-6 shadow-card sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+      <Card className="rounded-3xl border border-slate-200/90 p-6 shadow-card sm:p-8">
+        <div className="flex items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
             {type === "pharmacy" ? (
               <IconPharmacy className="h-5 w-5" />
             ) : (
@@ -299,19 +296,19 @@ export default function ProfessionalAuth({
             )}
           </span>
           <div>
-            <h2 className="text-base font-semibold text-ink-900">
+            <h2 className="font-display text-lg font-bold text-slate-900">
               {mode === "login"
                 ? "Connexion pharmacie"
                 : mode === "signup"
                   ? "Inscrire ma pharmacie"
                   : "Mot de passe / code d'accès oublié"}
             </h2>
-            <p className="text-xs text-slate-500">Espace Pharmacie · Kéné</p>
+            <p className="text-sm text-slate-500">Espace Pharmacie · Kéné</p>
           </div>
         </div>
 
         {allowedTypes.length > 1 ? (
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
             {allowedTypes.map((item) => (
               <button
                 key={item}
@@ -319,10 +316,10 @@ export default function ProfessionalAuth({
                 onClick={() => switchType(item)}
                 aria-pressed={type === item}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition",
+                  "flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition",
                   type === item
-                    ? "border-brand-500 bg-brand-50 text-brand-800"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300",
+                    ? "border-brand-600 bg-brand-50 text-brand-800"
+                    : "border-slate-200 text-slate-600 hover:border-slate-300",
                 )}
               >
                 {item === "pharmacy" ? (
@@ -337,7 +334,7 @@ export default function ProfessionalAuth({
         ) : null}
 
         {mode !== "recover" ? (
-          <div className="mt-5 flex rounded-2xl bg-slate-100/90 p-1 text-xs font-semibold">
+          <div className="mt-5 flex rounded-2xl bg-slate-100 p-1.5 text-sm font-semibold">
             {(["login", "signup"] as const).map((item) => (
               <button
                 key={item}
@@ -348,10 +345,10 @@ export default function ProfessionalAuth({
                 }}
                 aria-pressed={mode === item}
                 className={cn(
-                  "flex-1 rounded-xl px-3 py-2 transition",
+                  "min-h-[44px] flex-1 rounded-xl px-4 py-2 transition",
                   mode === item
-                    ? "bg-white text-ink-900 shadow-sm"
-                    : "text-slate-600 hover:text-ink-900",
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
                 )}
               >
                 {item === "login" ? "Connexion" : "Inscrire ma pharmacie"}
@@ -361,9 +358,12 @@ export default function ProfessionalAuth({
         ) : null}
 
         {mode === "login" ? (
-          <form onSubmit={submitLogin} className="mt-5 space-y-4">
+          <form onSubmit={submitLogin} className="mt-6 space-y-4">
             <div>
-              <label className="label" htmlFor="pro-email">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="pro-email"
+              >
                 Email professionnel
               </label>
               <input
@@ -371,7 +371,7 @@ export default function ProfessionalAuth({
                 type="email"
                 autoComplete="username"
                 placeholder="officine.rondpoint@kene.ci"
-                className="input"
+                className="input h-12 text-[15px]"
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
@@ -380,7 +380,10 @@ export default function ProfessionalAuth({
               />
             </div>
             <div>
-              <label className="label" htmlFor="pro-code">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="pro-code"
+              >
                 Mot de passe / code d&apos;accès
               </label>
               <input
@@ -388,7 +391,7 @@ export default function ProfessionalAuth({
                 type="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="input"
+                className="input h-12 text-[15px]"
                 value={code}
                 onChange={(event) => {
                   setCode(event.target.value);
@@ -400,7 +403,7 @@ export default function ProfessionalAuth({
             {error ? (
               <p
                 role="alert"
-                className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
               >
                 {error}
               </p>
@@ -409,7 +412,7 @@ export default function ProfessionalAuth({
             <button
               type="submit"
               disabled={busy}
-              className="btn-primary w-full rounded-xl py-3 text-xs disabled:opacity-60"
+              className="btn-primary h-12 w-full rounded-xl text-[15px] font-semibold disabled:opacity-60"
             >
               <IconKey className="h-4 w-4" />
               {busy ? "Connexion…" : "Se connecter"}
@@ -423,7 +426,7 @@ export default function ProfessionalAuth({
                   setRecoverEmail(email);
                   setError(null);
                 }}
-                className="text-xs font-medium text-brand-700 underline-offset-2 hover:underline"
+                className="inline-flex min-h-[44px] items-center text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
               >
                 Mot de passe oublié ?
               </button>
@@ -434,7 +437,7 @@ export default function ProfessionalAuth({
                   onClick={() => setShowAccounts((value) => !value)}
                   aria-expanded={showAccounts}
                   aria-controls="demo-accounts"
-                  className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-ink-900 hover:underline"
+                  className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
                 >
                   {showAccounts
                     ? "Masquer les comptes de démonstration"
@@ -446,7 +449,7 @@ export default function ProfessionalAuth({
             {FEATURES.showDemoAccounts && showAccounts ? (
               <div
                 id="demo-accounts"
-                className="scroll-thin max-h-56 space-y-1.5 overflow-y-auto rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3"
+                className="scroll-thin max-h-60 space-y-2 overflow-y-auto rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3"
               >
                 {visibleDemoAccounts.map((account) => {
                   const pharmacyEst =
@@ -477,17 +480,17 @@ export default function ProfessionalAuth({
                         setCode(account.accessCode);
                         setError(null);
                       }}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-transparent bg-white px-3 py-2 text-left transition hover:border-brand-200 hover:shadow-card"
+                      className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200/70 bg-white px-3.5 py-2.5 text-left transition hover:border-brand-300 hover:shadow-card"
                     >
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-semibold text-ink-900">
+                        <span className="block truncate text-sm font-semibold text-slate-900">
                           {displayTitle}
                         </span>
-                        <span className="block truncate text-[11px] text-slate-500">
+                        <span className="block truncate text-sm text-slate-500">
                           {account.email}
                         </span>
                       </span>
-                      <span className="shrink-0 rounded-lg bg-brand-50 px-2.5 py-1 font-mono text-[10px] font-semibold text-brand-800">
+                      <span className="shrink-0 rounded-lg bg-brand-50 px-3 py-1 font-mono text-sm font-semibold text-brand-800">
                         {account.accessCode}
                       </span>
                     </button>
@@ -497,14 +500,17 @@ export default function ProfessionalAuth({
             ) : null}
           </form>
         ) : mode === "signup" ? (
-          <form onSubmit={submitSignup} className="mt-5 space-y-4">
+          <form onSubmit={submitSignup} className="mt-6 space-y-4">
             <div>
-              <label className="label" htmlFor="signup-establishment">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="signup-establishment"
+              >
                 Votre officine
               </label>
               <select
                 id="signup-establishment"
-                className="input"
+                className="input h-12 text-[15px]"
                 value={existingId}
                 onChange={(event) => {
                   setExistingId(event.target.value);
@@ -518,7 +524,7 @@ export default function ProfessionalAuth({
                   </option>
                 ))}
               </select>
-              <p className="mt-1.5 text-[11px] text-slate-500">
+              <p className="mt-1.5 text-sm text-slate-600">
                 {availableEstablishments.length > 0
                   ? "Ou rattachez votre compte à une officine déjà référencée sur Kéné."
                   : "Renseignez les coordonnées de votre pharmacie ci-dessous."}
@@ -526,50 +532,62 @@ export default function ProfessionalAuth({
             </div>
 
             {!existingId ? (
-              <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="label" htmlFor="signup-name">
+                  <label
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    htmlFor="signup-name"
+                  >
                     Nom de la pharmacie
                   </label>
                   <input
                     id="signup-name"
-                    className="input"
+                    className="input h-12 text-[15px]"
                     placeholder="Pharmacie de la Paix"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="label" htmlFor="signup-quartier">
+                  <label
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    htmlFor="signup-quartier"
+                  >
                     Quartier / commune
                   </label>
                   <input
                     id="signup-quartier"
-                    className="input"
+                    className="input h-12 text-[15px]"
                     placeholder="Cocody"
                     value={quartier}
                     onChange={(event) => setQuartier(event.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="label" htmlFor="signup-phone">
+                  <label
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    htmlFor="signup-phone"
+                  >
                     Téléphone
                   </label>
                   <input
                     id="signup-phone"
-                    className="input"
+                    className="input h-12 text-[15px]"
                     placeholder="+225 07 00 00 00 00"
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="label" htmlFor="signup-address">
+                  <label
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    htmlFor="signup-address"
+                  >
                     Adresse
                   </label>
                   <input
                     id="signup-address"
-                    className="input"
+                    className="input h-12 text-[15px]"
                     placeholder="Rue des Jardins, près du carrefour"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
@@ -577,12 +595,15 @@ export default function ProfessionalAuth({
                 </div>
                 {type === "pharmacy" ? (
                   <div className="sm:col-span-2">
-                    <label className="label" htmlFor="signup-license">
+                    <label
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                      htmlFor="signup-license"
+                    >
                       N° d&apos;agrément / licence (optionnel)
                     </label>
                     <input
                       id="signup-license"
-                      className="input font-mono text-xs"
+                      className="input h-12 font-mono text-[15px]"
                       placeholder="CI-ONP-2026-0842"
                       maxLength={60}
                       value={licenseNumber}
@@ -593,54 +614,66 @@ export default function ProfessionalAuth({
               </div>
             ) : null}
 
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="label" htmlFor="signup-manager">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="signup-manager"
+                >
                   Responsable
                 </label>
                 <input
                   id="signup-manager"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   placeholder="Dr Aya Konan"
                   value={managerName}
                   onChange={(event) => setManagerName(event.target.value)}
                 />
               </div>
               <div>
-                <label className="label" htmlFor="signup-role">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="signup-role"
+                >
                   Fonction (optionnel)
                 </label>
                 <input
                   id="signup-role"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   placeholder="Pharmacien titulaire"
                   value={role}
                   onChange={(event) => setRole(event.target.value)}
                 />
               </div>
               <div>
-                <label className="label" htmlFor="signup-email">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="signup-email"
+                >
                   Email professionnel
                 </label>
                 <input
                   id="signup-email"
                   type="email"
                   autoComplete="username"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   placeholder="contact@monofficine.ci"
                   value={signupEmail}
                   onChange={(event) => setSignupEmail(event.target.value)}
                 />
               </div>
               <div>
-                <label className="label" htmlFor="signup-code">
+                <label
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  htmlFor="signup-code"
+                >
                   Mot de passe / code (6 à 72 car.)
                 </label>
                 <input
                   id="signup-code"
                   type="password"
                   autoComplete="new-password"
-                  className="input"
+                  className="input h-12 text-[15px]"
                   placeholder="••••••••"
                   value={signupCode}
                   onChange={(event) => setSignupCode(event.target.value)}
@@ -651,7 +684,7 @@ export default function ProfessionalAuth({
             {error ? (
               <p
                 role="alert"
-                className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
               >
                 {error}
               </p>
@@ -660,29 +693,32 @@ export default function ProfessionalAuth({
             <button
               type="submit"
               disabled={busy}
-              className="btn-primary w-full rounded-xl py-3 text-xs disabled:opacity-60"
+              className="btn-primary h-12 w-full rounded-xl text-[15px] font-semibold disabled:opacity-60"
             >
               <IconPharmacy className="h-4 w-4" />
               {busy ? "Création…" : "Créer mon compte pharmacie"}
             </button>
           </form>
         ) : (
-          <form onSubmit={submitRecover} className="mt-5 space-y-4">
-            <p className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-3 text-xs leading-relaxed text-slate-600">
+          <form onSubmit={submitRecover} className="mt-6 space-y-4">
+            <p className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 text-sm leading-relaxed text-slate-700">
               Vous avez oublié votre mot de passe ? Saisissez votre email
               professionnel et le code de secours reçu à l&apos;inscription pour
               définir un nouveau code d&apos;accès.
             </p>
 
             <div>
-              <label className="label" htmlFor="recover-email">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="recover-email"
+              >
                 Email professionnel
               </label>
               <input
                 id="recover-email"
                 type="email"
                 autoComplete="username"
-                className="input"
+                className="input h-12 text-[15px]"
                 placeholder="officine.rondpoint@kene.ci"
                 value={recoverEmail}
                 onChange={(event) => {
@@ -692,7 +728,10 @@ export default function ProfessionalAuth({
               />
             </div>
             <div>
-              <label className="label" htmlFor="recover-secret">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="recover-secret"
+              >
                 Code de secours reçu à l&apos;inscription
               </label>
               <input
@@ -700,7 +739,7 @@ export default function ProfessionalAuth({
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck={false}
-                className="input font-mono tracking-wide"
+                className="input h-12 font-mono text-[15px] tracking-wide"
                 placeholder="KNR-XXXX-XXXX"
                 value={recoverSecret}
                 onChange={(event) => {
@@ -710,14 +749,17 @@ export default function ProfessionalAuth({
               />
             </div>
             <div>
-              <label className="label" htmlFor="recover-new">
+              <label
+                className="mb-1.5 block text-sm font-semibold text-slate-700"
+                htmlFor="recover-new"
+              >
                 Nouveau mot de passe / code d&apos;accès (6 à 72 caractères)
               </label>
               <input
                 id="recover-new"
                 type="password"
                 autoComplete="new-password"
-                className="input"
+                className="input h-12 text-[15px]"
                 placeholder="••••••••"
                 value={recoverNew}
                 onChange={(event) => {
@@ -730,7 +772,7 @@ export default function ProfessionalAuth({
             {error ? (
               <p
                 role="alert"
-                className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
               >
                 {error}
               </p>
@@ -739,7 +781,7 @@ export default function ProfessionalAuth({
             <button
               type="submit"
               disabled={busy}
-              className="btn-primary w-full rounded-xl py-3 text-xs disabled:opacity-60"
+              className="btn-primary h-12 w-full rounded-xl text-[15px] font-semibold disabled:opacity-60"
             >
               <IconKey className="h-4 w-4" />
               {busy ? "Vérification…" : "Réinitialiser mon code"}
@@ -751,7 +793,7 @@ export default function ProfessionalAuth({
                 setMode("login");
                 setError(null);
               }}
-              className="text-xs font-medium text-slate-600 transition hover:text-ink-900"
+              className="inline-flex min-h-[44px] items-center text-sm font-semibold text-slate-700 transition hover:text-slate-900"
             >
               ← Retour à la connexion
             </button>
