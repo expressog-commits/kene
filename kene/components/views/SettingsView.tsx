@@ -1,20 +1,35 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../store";
-import { Badge, Card } from "../ui";
+import { cn } from "../ui";
 import {
+  IconArrowLeft,
+  IconChevronRight,
   IconCrosshair,
   IconDownload,
-  IconSearch,
+  IconLogout,
+  IconMapPin,
+  IconPharmacy,
+  IconPhone,
+  IconShare,
   IconShield,
-  IconStar,
   IconTrash,
 } from "../icons";
 
-export default function SettingsView() {
+export default function SettingsView({
+  onBack,
+  onOpenAccount,
+  onFindNearby,
+}: {
+  onBack: () => void;
+  onOpenAccount: () => void;
+  onFindNearby: () => void;
+}) {
   const {
     state,
+    session,
+    signOut,
     userLocation,
     locationStatus,
     requestLocation,
@@ -30,6 +45,9 @@ export default function SettingsView() {
     notify,
   } = useStore();
 
+  const [showInstallTip, setShowInstallTip] = useState(false);
+  const [showPrivacyNote, setShowPrivacyNote] = useState(false);
+
   const quartiers = useMemo(
     () => [
       "Tous",
@@ -38,14 +56,6 @@ export default function SettingsView() {
       ),
     ],
     [state.pharmacies],
-  );
-
-  const favoritePharmacies = useMemo(
-    () =>
-      state.pharmacies.filter((pharmacy) =>
-        favoritePharmacyIds.includes(pharmacy.id),
-      ),
-    [state.pharmacies, favoritePharmacyIds],
   );
 
   const activeQuartier = quartiers.includes(preferredQuartier)
@@ -57,210 +67,315 @@ export default function SettingsView() {
     favoritePharmacyIds.length > 0 ||
     recentSearches.length > 0;
 
-  const locationSummary =
-    locationStatus === "granted" && userLocation
-      ? `Active (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
-      : locationStatus === "locating"
-        ? "Recherche de votre position…"
-        : locationStatus === "denied"
-          ? "Autorisation refusée dans le navigateur"
-          : locationStatus === "unsupported"
-            ? "Non prise en charge sur cet appareil"
-            : "Non activée";
+  const handleShare = async () => {
+    const shareUrl =
+      typeof window !== "undefined" ? window.location.origin : "https://kene.ci";
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({
+          title: "Kéné — Pharmacies d'Abidjan",
+          text: "Trouvez rapidement vos médicaments et les pharmacies de garde à Abidjan.",
+          url: shareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard?.writeText(shareUrl);
+      notify("Lien Kéné copié !");
+    } catch {
+      notify("Partage annulé.");
+    }
+  };
+
+  const handleInstall = async () => {
+    if (isPwaInstalled) {
+      notify("Kéné est déjà installé sur cet appareil.");
+      return;
+    }
+    if (canInstallPwa) {
+      const accepted = await installPwa();
+      if (accepted) notify("Kéné installé sur votre écran d'accueil.");
+      return;
+    }
+    setShowInstallTip((prev) => !prev);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-2xl p-6">
-          <h2 className="font-display text-lg font-bold text-slate-900">
-            Mes préférences
-          </h2>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">
-            Enregistrées uniquement sur votre appareil pour retrouver plus vite
-            vos pharmacies et recherches habituelles.
-          </p>
+    <div className="min-h-screen bg-[#F4F5F7] text-slate-900">
+      <div className="mx-auto w-full max-w-xl px-4 pb-16 pt-4 sm:px-6">
+        <header className="flex items-center gap-3 py-2">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Retour aux pharmacies"
+            className="-ml-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-900 transition hover:bg-black/5"
+          >
+            <IconArrowLeft className="h-6 w-6" />
+          </button>
+          <h1 className="font-display text-[22px] font-bold tracking-tight text-slate-900">
+            Paramètres
+          </h1>
+        </header>
 
-          <div className="mt-5">
-            <label
-              className="mb-1.5 block text-sm font-semibold text-slate-700"
-              htmlFor="preferred-quartier"
+        <div className="mt-5 space-y-6">
+          <section aria-labelledby="settings-account-heading">
+            <h2
+              id="settings-account-heading"
+              className="mb-2 px-1 text-sm font-semibold text-slate-500"
             >
-              Commune par défaut
-            </label>
-            <select
-              id="preferred-quartier"
-              className="input h-12 py-2.5 text-[15px] leading-snug"
-              value={activeQuartier}
-              onChange={(event) => {
-                setPreferredQuartier(event.target.value);
-                notify("Commune par défaut enregistrée sur cet appareil.");
-              }}
-            >
-              {quartiers.map((quartier) => (
-                <option key={quartier} value={quartier}>
-                  {quartier === "Tous" ? "Tout Abidjan" : quartier}
-                </option>
-              ))}
-            </select>
-          </div>
+              Compte
+            </h2>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              <button
+                type="button"
+                onClick={onOpenAccount}
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+              >
+                <span className="flex min-w-0 items-center gap-3.5">
+                  <IconPharmacy className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="truncate text-[15px] font-medium text-slate-900">
+                    {session?.type === "pharmacy"
+                      ? session.establishmentName
+                      : "Se connecter / Compte Pharmacie"}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {session?.type === "pharmacy" ? (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      Connecté
+                    </span>
+                  ) : null}
+                  <IconChevronRight className="h-4 w-4 text-slate-400" />
+                </span>
+              </button>
 
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <IconCrosshair className="h-4 w-4 shrink-0 text-brand-700" />
-                Position GPS locale
-              </p>
-              <p className="mt-1 text-sm tabular-nums text-slate-600">
-                {locationSummary}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!userLocation ? (
+              {session ? (
                 <button
                   type="button"
-                  disabled={locationStatus === "locating"}
-                  onClick={() => requestLocation()}
-                  className="btn-secondary h-12 w-full rounded-xl px-4 text-[15px] sm:w-auto"
+                  onClick={async () => {
+                    await signOut();
+                    notify("Déconnecté.");
+                    onOpenAccount();
+                  }}
+                  className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
                 >
-                  Activer ma position
+                  <span className="flex items-center gap-3.5">
+                    <IconLogout className="h-5 w-5 shrink-0 text-slate-900" />
+                    <span className="text-[15px] font-medium text-slate-900">
+                      Changer de compte / Se déconnecter
+                    </span>
+                  </span>
+                  <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                 </button>
-              ) : (
+              ) : null}
+            </div>
+          </section>
+
+          <section aria-labelledby="settings-prefs-heading">
+            <h2
+              id="settings-prefs-heading"
+              className="mb-2 px-1 text-sm font-semibold text-slate-500"
+            >
+              Préférences
+            </h2>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              <div className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3">
+                <label
+                  htmlFor="preferred-quartier"
+                  className="flex items-center gap-3.5 text-[15px] font-medium text-slate-900"
+                >
+                  <IconMapPin className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span>Commune par défaut</span>
+                </label>
+                <select
+                  id="preferred-quartier"
+                  aria-label="Commune par défaut"
+                  value={activeQuartier}
+                  onChange={(event) => {
+                    setPreferredQuartier(event.target.value);
+                    notify("Commune par défaut enregistrée sur cet appareil.");
+                  }}
+                  className="max-w-[155px] rounded-xl bg-slate-100 px-3 py-2 text-right text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+                >
+                  {quartiers.map((quartier) => (
+                    <option key={quartier} value={quartier}>
+                      {quartier === "Tous" ? "Tout Abidjan" : quartier}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                disabled={locationStatus === "locating"}
+                onClick={() => {
+                  if (userLocation) {
+                    clearLocation();
+                    notify("Position GPS effacée.");
+                  } else {
+                    requestLocation();
+                  }
+                }}
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                <span className="flex items-center gap-3.5">
+                  <IconCrosshair className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="text-[15px] font-medium text-slate-900">
+                    Position GPS locale
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 text-sm font-semibold",
+                    userLocation ? "text-brand-700" : "text-slate-500",
+                  )}
+                >
+                  {userLocation
+                    ? "Active · Effacer"
+                    : locationStatus === "locating"
+                      ? "Localisation…"
+                      : locationStatus === "denied"
+                        ? "Refusée"
+                        : "Activer"}
+                </span>
+              </button>
+
+              {hasLocalPrefs ? (
                 <button
                   type="button"
                   onClick={() => {
-                    clearLocation();
-                    notify("Position GPS effacée.");
+                    clearPatientPrefs();
+                    notify("Préférences locales effacées.");
                   }}
-                  className="btn-secondary h-12 w-full rounded-xl px-4 text-[15px] sm:w-auto"
+                  className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
                 >
-                  Effacer ma position
+                  <span className="flex items-center gap-3.5">
+                    <IconTrash className="h-5 w-5 shrink-0 text-slate-900" />
+                    <span className="text-[15px] font-medium text-slate-900">
+                      Effacer favoris et recherches
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
+                    {favoritePharmacyIds.length} fav. · {recentSearches.length} rech.
+                  </span>
                 </button>
-              )}
+              ) : null}
             </div>
-          </div>
+          </section>
 
-          <div className="mt-4 grid gap-3.5 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <IconStar className="h-4 w-4 text-sun-500" />
-                  Favorites
-                </span>
-                <Badge tone="neutral" className="tabular-nums">
-                  {favoritePharmacies.length}
-                </Badge>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {favoritePharmacies.length > 0
-                  ? favoritePharmacies
-                      .slice(0, 3)
-                      .map((pharmacy) => pharmacy.name)
-                      .join(", ") +
-                    (favoritePharmacies.length > 3
-                      ? ` (+${favoritePharmacies.length - 3})`
-                      : "")
-                  : "Aucune pharmacie favorite."}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <IconSearch className="h-4 w-4 text-brand-700" />
-                  Recherches récentes
-                </span>
-                <Badge tone="neutral" className="tabular-nums">
-                  {recentSearches.length}
-                </Badge>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {recentSearches.length > 0
-                  ? recentSearches.slice(0, 3).join(", ") +
-                    (recentSearches.length > 3
-                      ? ` (+${recentSearches.length - 3})`
-                      : "")
-                  : "Aucune recherche récente."}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <button
-              type="button"
-              disabled={!hasLocalPrefs}
-              onClick={() => {
-                clearPatientPrefs();
-                notify("Préférences locales effacées.");
-              }}
-              className="btn-secondary h-12 w-full rounded-xl px-5 text-[15px] sm:w-auto"
+          <section aria-labelledby="settings-share-heading">
+            <h2
+              id="settings-share-heading"
+              className="mb-2 px-1 text-sm font-semibold text-slate-500"
             >
-              <IconTrash className="h-4 w-4" />
-              Effacer mes préférences locales
-            </button>
-          </div>
-        </Card>
+              Partager
+            </h2>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+              >
+                <span className="flex items-center gap-3.5">
+                  <IconShare className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="text-[15px] font-medium text-slate-900">
+                    Inviter un proche à utiliser Kéné
+                  </span>
+                </span>
+                <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
 
-        <div className="space-y-6">
-          <Card className="rounded-2xl p-6">
-            <div className="flex items-start gap-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
-                <IconDownload className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="font-display text-lg font-bold text-slate-900">
-                    Application sur votre téléphone
-                  </h2>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => void handleInstall()}
+                  aria-expanded={showInstallTip}
+                  className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+                >
+                  <span className="flex items-center gap-3.5">
+                    <IconDownload className="h-5 w-5 shrink-0 text-slate-900" />
+                    <span className="text-[15px] font-medium text-slate-900">
+                      Installer l&apos;application
+                    </span>
+                  </span>
                   {isPwaInstalled ? (
-                    <Badge tone="green" dot>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
                       Installée
-                    </Badge>
-                  ) : null}
-                </div>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">
-                  {isPwaInstalled
-                    ? "Kéné est installé sur votre appareil et reste consultable même avec une connexion instable."
-                    : canInstallPwa
-                      ? "Installez Kéné sur votre écran d'accueil pour retrouver les pharmacies en un geste."
-                      : "Sur Android (Chrome) : menu ⋮ → Installer l'application. Sur iPhone / iPad (Safari) : bouton Partager → Sur l'écran d'accueil."}
-                </p>
-
-                {!isPwaInstalled && canInstallPwa ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const accepted = await installPwa();
-                      if (accepted) {
-                        notify("Kéné a été installé sur cet appareil.");
-                      }
-                    }}
-                    className="btn-primary mt-5 h-12 w-full rounded-xl px-5 text-[15px] sm:w-auto"
-                  >
-                    <IconDownload className="h-4 w-4" />
-                    Installer Kéné sur cet appareil
-                  </button>
+                    </span>
+                  ) : (
+                    <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                  )}
+                </button>
+                {showInstallTip && !isPwaInstalled ? (
+                  <p className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-sm leading-relaxed text-slate-600">
+                    Sur Android (Chrome) : menu ⋮ → Installer l&apos;application. Sur
+                    iPhone (Safari) : bouton Partager → Sur l&apos;écran d&apos;accueil.
+                  </p>
                 ) : null}
               </div>
             </div>
-          </Card>
+          </section>
 
-          <Card className="rounded-2xl border-brand-100 bg-brand-50/50 p-6">
-            <div className="flex items-start gap-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-sm">
-                <IconShield className="h-5 w-5" />
-              </span>
+          <section aria-labelledby="settings-support-heading">
+            <h2
+              id="settings-support-heading"
+              className="mb-2 px-1 text-sm font-semibold text-slate-500"
+            >
+              Support
+            </h2>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              <a
+                href="tel:185"
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+              >
+                <span className="flex items-center gap-3.5">
+                  <IconPhone className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="text-[15px] font-medium text-slate-900">
+                    Urgence vitale · Appeler le SAMU 185
+                  </span>
+                </span>
+                <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </a>
+
+              <button
+                type="button"
+                onClick={onFindNearby}
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+              >
+                <span className="flex items-center gap-3.5">
+                  <IconMapPin className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="text-[15px] font-medium text-slate-900">
+                    Trouver les pharmacies à proximité
+                  </span>
+                </span>
+                <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+
               <div>
-                <h2 className="font-display text-base font-bold text-slate-900">
-                  Confidentialité
-                </h2>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-slate-700">
-                  Aucune donnée personnelle (nom, téléphone, position GPS, recherche ou
-                  pharmacie favorite) n&apos;est envoyée ni stockée sur nos serveurs :
-                  tout reste uniquement dans votre navigateur.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacyNote((prev) => !prev)}
+                  aria-expanded={showPrivacyNote}
+                  className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+                >
+                  <span className="flex items-center gap-3.5">
+                    <IconShield className="h-5 w-5 shrink-0 text-slate-900" />
+                    <span className="text-[15px] font-medium text-slate-900">
+                      Confidentialité &amp; informations
+                    </span>
+                  </span>
+                  <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+                {showPrivacyNote ? (
+                  <p className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-sm leading-relaxed text-slate-600">
+                    Aucune donnée personnelle (position GPS, recherches ou favoris)
+                    n&apos;est envoyée à nos serveurs : tout reste sur votre appareil.
+                    Outil d&apos;information uniquement — aucune vente ni réservation
+                    médicale.
+                  </p>
+                ) : null}
               </div>
             </div>
-          </Card>
+          </section>
         </div>
       </div>
     </div>

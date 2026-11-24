@@ -238,6 +238,21 @@ export const IconUserCheck = (p: IconProps) => (
   </svg>
 );
 
+export const IconArrowLeft = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M20 12H4M10 6l-6 6 6 6" />
+  </svg>
+);
+
+export const IconShare = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="18" cy="5" r="2.8" />
+    <circle cx="6" cy="12" r="2.8" />
+    <circle cx="18" cy="19" r="2.8" />
+    <path d="m8.6 10.6 6.8-4.2M8.6 13.4l6.8 4.2" />
+  </svg>
+);
+
 export const IconLogo = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 32 32"

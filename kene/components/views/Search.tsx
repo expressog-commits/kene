@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
-import { Badge, cn } from "../ui";
+import { cn } from "../ui";
 import PharmacyMap, { type PharmacyMapMarker } from "../PharmacyMap";
 import {
   IconCheck,
@@ -10,15 +10,20 @@ import {
   IconClock,
   IconClose,
   IconCrosshair,
+  IconDownload,
   IconList,
+  IconLogo,
   IconMap,
   IconMapPin,
   IconNavigation,
+  IconPharmacy,
   IconPhone,
   IconPill,
   IconPlus,
   IconSearch,
+  IconSettings,
   IconStar,
+  IconUserCheck,
   IconWhatsApp,
 } from "../icons";
 import {
@@ -42,69 +47,20 @@ type DisplayMode = "list" | "map";
 
 const MAX_LIST_ITEMS = 8;
 
-const QUICK_SEARCHES = [
-  "Paracétamol",
-  "Amoxicilline",
-  "Paludisme",
-  "Sirop enfant",
-] as const;
+const CARD_PATTERN = {
+  backgroundImage:
+    "repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 10px, transparent 10px, transparent 22px)",
+};
 
 function humanOpeningStatus(pharmacy: Pharmacy): string {
   if (pharmacy.onDuty || (pharmacy.openFrom === 0 && pharmacy.openTo >= 24)) {
-    return "Ouvert 24h/24";
+    return "24h/24";
   }
-  if (isOpen(pharmacy)) return `Ouvert jusqu'à ${pharmacy.openTo} h`;
-  return `Fermé · Ouvre à ${pharmacy.openFrom} h`;
+  if (isOpen(pharmacy)) return `Jusqu'à ${pharmacy.openTo}h`;
+  return `Ouvre à ${pharmacy.openFrom}h`;
 }
 
-function DisplayToggle({
-  display,
-  onChange,
-  ariaLabel,
-}: {
-  display: DisplayMode;
-  onChange: (next: DisplayMode) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className="inline-flex shrink-0 rounded-xl border border-slate-200 bg-white p-1 shadow-sm lg:hidden"
-    >
-      <button
-        type="button"
-        onClick={() => onChange("list")}
-        aria-pressed={display === "list"}
-        className={cn(
-          "inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition",
-          display === "list"
-            ? "bg-brand-700 text-white shadow-sm"
-            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
-        )}
-      >
-        <IconList className="h-4 w-4" />
-        Liste
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("map")}
-        aria-pressed={display === "map"}
-        className={cn(
-          "inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition",
-          display === "map"
-            ? "bg-brand-700 text-white shadow-sm"
-            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
-        )}
-      >
-        <IconMap className="h-4 w-4" />
-        Carte
-      </button>
-    </div>
-  );
-}
-
-function PharmacyCardShell({
+function PharmacyRowShell({
   pharmacyId,
   isActive,
   dimmed = false,
@@ -126,10 +82,8 @@ function PharmacyCardShell({
       onMouseLeave={() => onHover(null)}
       onClick={() => onSelect(pharmacyId)}
       className={cn(
-        "rounded-2xl border bg-white p-5 transition sm:p-6",
-        isActive
-          ? "border-brand-500 ring-2 ring-brand-500/30 shadow-soft"
-          : "border-slate-200/90 hover:border-brand-500/60 hover:shadow-soft",
+        "px-4 py-4 transition sm:px-5",
+        isActive ? "bg-brand-50/50" : "hover:bg-slate-50/80",
         dimmed && "opacity-75",
       )}
     >
@@ -138,24 +92,41 @@ function PharmacyCardShell({
   );
 }
 
-function PharmacyCardHeader({
+function PharmacyRowHeader({
   pharmacy,
   open,
+  distanceKm,
   isFav,
   onToggleFavorite,
-  rightSlot,
+  rightTop,
+  rightBottom,
+  rightTone = "brand",
 }: {
   pharmacy: Pharmacy;
   open: boolean;
+  distanceKm: number;
   isFav: boolean;
   onToggleFavorite: (pharmacyId: string) => void;
-  rightSlot: ReactNode;
+  rightTop: string;
+  rightBottom?: string;
+  rightTone?: "brand" | "green" | "amber" | "red" | "muted";
 }) {
+  const toneClass =
+    rightTone === "green"
+      ? "text-emerald-700"
+      : rightTone === "amber"
+        ? "text-amber-700"
+        : rightTone === "red"
+          ? "text-rose-700"
+          : rightTone === "muted"
+            ? "text-slate-500"
+            : "text-brand-700";
+
   return (
-    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-      <div className="min-w-[200px] flex-1">
-        <div className="flex items-start gap-1.5">
-          <h3 className="text-lg font-bold leading-snug text-slate-900">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <h3 className="truncate text-[15px] font-bold text-slate-900">
             {pharmacy.name}
           </h3>
           <button
@@ -171,68 +142,65 @@ function PharmacyCardHeader({
                 : `Ajouter ${pharmacy.name} aux favorites`
             }
             className={cn(
-              "-mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition",
+              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
               isFav
                 ? "text-sun-500 hover:bg-sun-50"
-                : "text-slate-400 hover:bg-slate-100 hover:text-sun-500",
+                : "text-slate-300 hover:bg-slate-100 hover:text-sun-500",
             )}
           >
-            <IconStar filled={isFav} className="h-5 w-5" />
+            <IconStar filled={isFav} className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mt-1.5">
-          <Badge tone={open ? "green" : "neutral"} dot pulse={pharmacy.onDuty && open}>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold",
+              pharmacy.onDuty && open
+                ? "bg-emerald-50 text-emerald-800"
+                : open
+                  ? "bg-brand-50 text-brand-800"
+                  : "bg-slate-100 text-slate-600",
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                open ? "bg-emerald-600" : "bg-slate-400",
+              )}
+            />
             {open
               ? pharmacy.onDuty
                 ? "De garde 24h/24"
                 : "Ouvert"
               : "Fermé"}
-          </Badge>
+          </span>
+          <span>{pharmacy.quartier}</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-semibold tabular-nums text-slate-700">
+            à {distanceLabel(distanceKm)}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>{humanOpeningStatus(pharmacy)}</span>
         </div>
       </div>
 
-      <div className="shrink-0 sm:text-right">{rightSlot}</div>
-    </div>
-  );
-}
-
-function PharmacyCardMeta({
-  pharmacy,
-  distanceKm,
-}: {
-  pharmacy: Pharmacy;
-  distanceKm: number;
-}) {
-  return (
-    <div className="mt-3 space-y-1">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-slate-700">
-        <span className="inline-flex items-center gap-1.5">
-          <IconMapPin className="h-4 w-4 shrink-0 text-brand-700" />
-          <span>{pharmacy.quartier}</span>
-          <span aria-hidden="true" className="text-slate-300">
-            ·
-          </span>
-          <strong className="font-semibold tabular-nums text-slate-900">
-            à {distanceLabel(distanceKm)}
-          </strong>
-        </span>
-        <span aria-hidden="true" className="text-slate-300">
-          ·
-        </span>
-        <span className="text-slate-600">{humanOpeningStatus(pharmacy)}</span>
-      </p>
-      <p className="text-sm text-slate-600">{pharmacy.address}</p>
-      {pharmacy.onDuty && pharmacy.dutyNote ? (
-        <p className="mt-2 inline-block rounded-xl bg-brand-50/80 px-3 py-1.5 text-sm font-medium text-brand-800">
-          {pharmacy.dutyNote}
+      <div className="shrink-0 text-right">
+        <p className={cn("text-[15px] font-extrabold tabular-nums", toneClass)}>
+          {rightTop}
         </p>
-      ) : null}
+        {rightBottom ? (
+          <p className="mt-0.5 text-xs font-semibold tabular-nums text-slate-500">
+            {rightBottom}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function PharmacyCardFooter({
+function PharmacyRowActions({
   pharmacy,
   userLocation,
   primaryDirections = true,
@@ -246,26 +214,28 @@ function PharmacyCardFooter({
   timestampText: string;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-4">
+    <div className="mt-3 flex flex-wrap items-center gap-2">
       <a
         href={mapsDirectionsLink(pharmacy, userLocation)}
         target="_blank"
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
         className={cn(
-          "h-12 flex-1 px-5 text-[15px] sm:flex-none",
-          primaryDirections ? "btn-primary" : "btn-secondary",
+          "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition active:scale-[0.98]",
+          primaryDirections
+            ? "bg-brand-700 text-white hover:bg-brand-800"
+            : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
         )}
       >
-        <IconNavigation className="h-4 w-4" />
+        <IconNavigation className="h-3.5 w-3.5" />
         Itinéraire
       </a>
       <a
         href={`tel:${pharmacy.phone.replace(/\s/g, "")}`}
         onClick={(event) => event.stopPropagation()}
-        className="btn-secondary h-12 flex-1 px-5 text-[15px] sm:flex-none"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98]"
       >
-        <IconPhone className="h-4 w-4" />
+        <IconPhone className="h-3.5 w-3.5" />
         Appeler
       </a>
       <a
@@ -273,14 +243,12 @@ function PharmacyCardFooter({
         target="_blank"
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex h-12 flex-1 min-w-[140px] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[15px] font-semibold text-emerald-900 transition hover:bg-emerald-100 sm:flex-none"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98]"
       >
-        <IconWhatsApp className="h-4 w-4" />
+        <IconWhatsApp className="h-3.5 w-3.5" />
         WhatsApp
       </a>
-      <span className="w-full text-[13px] text-slate-500 sm:ml-auto sm:w-auto">
-        {timestampText}
-      </span>
+      <span className="ml-auto text-[11px] text-slate-400">{timestampText}</span>
     </div>
   );
 }
@@ -290,11 +258,29 @@ export default function Search({
   onConsumeInitialQuery,
   initialOnlyDuty,
   onConsumeInitialOnlyDuty,
+  initialTriggerGps,
+  onConsumeInitialTriggerGps,
+  onOpenSettings,
+  onOpenAccount,
+  accountLabel,
+  isOffline,
+  saving,
+  canInstallPwa,
+  onInstallPwa,
 }: {
   initialQuery?: string;
   onConsumeInitialQuery?: () => void;
   initialOnlyDuty?: boolean;
   onConsumeInitialOnlyDuty?: () => void;
+  initialTriggerGps?: boolean;
+  onConsumeInitialTriggerGps?: () => void;
+  onOpenSettings: () => void;
+  onOpenAccount: () => void;
+  accountLabel?: string | null;
+  isOffline?: boolean;
+  saving?: boolean;
+  canInstallPwa?: boolean;
+  onInstallPwa?: () => void;
 }) {
   const {
     state,
@@ -315,6 +301,7 @@ export default function Search({
   const listInputRef = useRef<HTMLInputElement>(null);
   const suppressBlurRef = useRef(false);
   const resultsColumnRef = useRef<HTMLDivElement>(null);
+  const mapSectionRef = useRef<HTMLElement>(null);
 
   const [mode, setMode] = useState<SearchMode>("single");
   const [display, setDisplay] = useState<DisplayMode>("list");
@@ -357,6 +344,12 @@ export default function Search({
     addRecentSearch(incoming);
     onConsumeInitialQuery?.();
   }, [initialQuery, addRecentSearch, onConsumeInitialQuery]);
+
+  useEffect(() => {
+    if (!initialTriggerGps) return;
+    requestLocation();
+    onConsumeInitialTriggerGps?.();
+  }, [initialTriggerGps, requestLocation, onConsumeInitialTriggerGps]);
 
   useEffect(() => {
     setHoveredPharmacyId(null);
@@ -438,20 +431,25 @@ export default function Search({
   };
 
   const inStockByPharmacy = useMemo(() => {
-    const medicineById = new Map(state.medicines.map((item) => [item.id, item]));
-    const grouped = new Map<string, Array<{ medicine: Medicine; stock: StockItem }>>();
-    for (const item of state.stock) {
-      if (item.quantity <= 0) continue;
-      const medicine = medicineById.get(item.medicineId);
+    const medicineById = new Map<string, Medicine>(
+      state.medicines.map((medicine) => [medicine.id, medicine]),
+    );
+    const map = new Map<string, Array<{ medicine: Medicine; stock: StockItem }>>();
+    for (const stock of state.stock) {
+      if (stockLevel(stock) === "out") continue;
+      const medicine = medicineById.get(stock.medicineId);
       if (!medicine) continue;
-      const bucket = grouped.get(item.pharmacyId) ?? [];
-      bucket.push({ medicine, stock: item });
-      grouped.set(item.pharmacyId, bucket);
+      const bucket = map.get(stock.pharmacyId);
+      if (bucket) {
+        bucket.push({ medicine, stock });
+      } else {
+        map.set(stock.pharmacyId, [{ medicine, stock }]);
+      }
     }
-    for (const bucket of grouped.values()) {
-      bucket.sort((a, b) => a.medicine.name.localeCompare(b.medicine.name));
+    for (const entries of Array.from(map.values())) {
+      entries.sort((a, b) => a.medicine.name.localeCompare(b.medicine.name, "fr"));
     }
-    return grouped;
+    return map;
   }, [state.medicines, state.stock]);
 
   const nearbyPharmacies = useMemo(() => {
@@ -571,13 +569,13 @@ export default function Search({
                   ? "amber"
                   : "red",
             priceLabel: fcfa(row.stock.price),
-            subtitle: `${row.medicine.name} · ${row.medicine.form}`,
-            waText: `Bonjour, avez-vous actuellement ${row.medicine.name} (${row.medicine.form}) en stock ? (vu sur Kéné)`,
+            subtitle: `${row.medicine.name} · ${openingLabel(row.pharmacy)}`,
+            waText: `Bonjour, avez-vous actuellement ${row.medicine.name} (${row.medicine.form}) en stock ? (via Kéné)`,
           },
         });
       } else {
         existing.count += 1;
-        existing.marker.subtitle = `${existing.marker.subtitle?.split(" (+")[0]} (+${existing.count - 1} autre${existing.count > 2 ? "s" : ""})`;
+        existing.marker.subtitle = `${existing.count} présentations trouvées · ${openingLabel(row.pharmacy)}`;
       }
     }
     return Array.from(seen.values()).map((entry) => entry.marker);
@@ -585,7 +583,7 @@ export default function Search({
 
   const listMapMarkers = useMemo<PharmacyMapMarker[]>(() => {
     const listSummary = selectedMedicines
-      .map((medicine) => `• ${medicine.name} (${medicine.form})`)
+      .map((medicine) => `• ${medicine.name}`)
       .join("\n");
     return listResults.map((result) => ({
       pharmacy: result.pharmacy,
@@ -652,17 +650,14 @@ export default function Search({
   const addMedicineToList = (medicineId: string) => {
     const medicine = state.medicines.find((item) => item.id === medicineId);
     if (!medicine) return;
-
     if (selectedMedicineIds.includes(medicineId)) {
       notify(`${medicine.name} est déjà dans votre ordonnance.`);
       return;
     }
-
     if (selectedMedicineIds.length >= MAX_LIST_ITEMS) {
       notify(`Maximum ${MAX_LIST_ITEMS} médicaments par ordonnance.`);
       return;
     }
-
     setSelectedMedicineIds((previous) => [...previous, medicineId]);
     notify(
       `${medicine.name} ajouté (${selectedMedicineIds.length + 1}/${MAX_LIST_ITEMS}).`,
@@ -676,10 +671,7 @@ export default function Search({
   const copySelectedList = () => {
     if (selectedMedicines.length === 0) return;
     const textList = selectedMedicines
-      .map(
-        (medicine, idx) =>
-          `${idx + 1}. ${medicine.name} — ${medicine.form}`,
-      )
+      .map((medicine, idx) => `${idx + 1}. ${medicine.name} — ${medicine.form}`)
       .join("\n");
     void navigator.clipboard
       ?.writeText(`Ordonnance Kéné :\n${textList}`)
@@ -687,7 +679,6 @@ export default function Search({
       .catch(() => notify("Copie impossible sur ce navigateur."));
   };
 
-  const openNow = rows.filter((row) => row.open && row.level !== "out").length;
   const uniqueRowPharmacies = useMemo(
     () => new Set(rows.map((row) => row.pharmacy.id)).size,
     [rows],
@@ -701,945 +692,658 @@ export default function Search({
       listResults.length > 0);
   const completeListCount = listResults.filter((item) => item.complete).length;
 
+  const feedTitle = useMemo(() => {
+    if (mode === "list") {
+      if (selectedMedicineIds.length === 0) {
+        return "Sélectionnez vos médicaments";
+      }
+      if (listResults.length === 0) {
+        return "Aucune pharmacie pour cette ordonnance";
+      }
+      if (completeListCount > 0) {
+        return `${completeListCount} pharmacie${completeListCount > 1 ? "s ont" : " a"} tout en stock`;
+      }
+      return `${listResults.length} pharmacie${listResults.length > 1 ? "s" : ""} avec stock partiel`;
+    }
+    if (hasSingleQuery) {
+      if (rows.length === 0) {
+        return `Aucun résultat pour « ${query.trim()} »`;
+      }
+      return `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} »`;
+    }
+    return `${nearbyPharmacies.length} pharmacie${nearbyPharmacies.length > 1 ? "s" : ""} vérifiée${nearbyPharmacies.length > 1 ? "s" : ""}`;
+  }, [
+    mode,
+    selectedMedicineIds.length,
+    listResults.length,
+    completeListCount,
+    hasSingleQuery,
+    rows.length,
+    uniqueRowPharmacies,
+    query,
+    nearbyPharmacies.length,
+  ]);
+
+  const handleToggleMapAction = () => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setDisplay("list");
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      notify("La carte d'Abidjan est affichée à droite.");
+      return;
+    }
+    setDisplay((prev) => (prev === "map" ? "list" : "map"));
+  };
+
   return (
-    <div className="space-y-6">
-      <section
-        aria-label="Recherche de médicaments et filtres"
-        className="rounded-3xl bg-brand-700 px-5 py-6 text-white shadow-card sm:px-8 sm:py-7"
-      >
-        <h1 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {mode === "single"
-            ? "Trouvez votre médicament"
-            : "Chercher toute une ordonnance"}
-        </h1>
-
-        {mode === "single" ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (query.trim()) addRecentSearch(query);
-            }}
-            className="mt-4 flex h-14 items-center rounded-2xl bg-white p-1.5 shadow-lg"
-          >
-            <IconSearch className="ml-2.5 h-5 w-5 shrink-0 text-brand-700" />
-            <input
-              ref={inputRef}
-              type="search"
-              enterKeyHint="search"
-              autoComplete="off"
-              aria-label="Rechercher un médicament"
-              aria-describedby="search-shortcut"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onBlur={() => {
-                if (suppressBlurRef.current) {
-                  suppressBlurRef.current = false;
-                  return;
-                }
-                if (query.trim().length >= 2) addRecentSearch(query);
-              }}
-              placeholder="Ex : Paracétamol, Amoxicilline…"
-              className="min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
-            />
-            <span id="search-shortcut" className="sr-only">
-              Appuyez sur la barre oblique pour revenir à la recherche.
-            </span>
-
-            {query ? (
+    <div className="min-h-screen bg-[#F4F5F7]">
+      <div className="mx-auto max-w-7xl lg:grid lg:grid-cols-[460px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-6 lg:py-6 xl:grid-cols-[500px_minmax(0,1fr)]">
+        <div
+          ref={resultsColumnRef}
+          className="min-w-0 bg-white lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-slate-200/80 lg:shadow-soft"
+        >
+          {/* 1. Top Vibrant Brand Header (Wave layout rhythm in Kéné emerald) */}
+          <header className="bg-gradient-to-b from-[#045D56] to-[#066F66] px-4 pb-16 pt-4 text-white">
+            <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setQuery("");
-                  inputRef.current?.focus();
-                }}
-                aria-label="Effacer la recherche"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={onOpenSettings}
+                aria-label="Paramètres"
+                title="Paramètres"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition hover:bg-white/15"
               >
-                <IconClose className="h-5 w-5" />
+                <IconSettings className="h-6 w-6" />
               </button>
-            ) : null}
 
-            <div className="hidden shrink-0 items-center sm:flex">
-              <span aria-hidden="true" className="mx-1.5 h-7 w-px bg-slate-200" />
-              <select
-                aria-label="Commune"
-                value={quartier}
-                onChange={(event) => setQuartier(event.target.value)}
-                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 py-2.5 text-sm font-semibold leading-snug text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {quartiers.map((item) => (
-                  <option key={item} value={item} className="bg-white text-slate-900">
-                    {item === "Tous" ? "Tout Abidjan" : item}
-                  </option>
-                ))}
-              </select>
-
-              <span aria-hidden="true" className="mx-1.5 h-7 w-px bg-slate-200" />
-
-              {userLocation ? (
-                <button
-                  type="button"
-                  onClick={clearLocation}
-                  aria-label="Désactiver la position GPS"
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
-                >
-                  <IconCrosshair className="h-4 w-4 text-brand-700" />
-                  <span>GPS actif</span>
-                  <IconClose className="h-4 w-4 text-brand-700" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={requestLocation}
-                  disabled={locationStatus === "locating"}
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-60"
-                >
-                  <IconCrosshair className="h-4 w-4" />
-                  <span>
-                    {locationStatus === "locating" ? "Localisation…" : "Autour de moi"}
+              <div className="flex items-center gap-1.5">
+                {isOffline ? (
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-amber-400/20 px-2.5 text-xs font-semibold text-amber-100">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                    Hors-ligne
                   </span>
-                </button>
-              )}
-            </div>
-          </form>
-        ) : (
-          <div className="mt-4 flex h-14 items-center rounded-2xl bg-white p-1.5 shadow-lg">
-            <IconSearch className="ml-2.5 h-5 w-5 shrink-0 text-brand-700" />
-            <input
-              ref={listInputRef}
-              type="search"
-              enterKeyHint="search"
-              autoComplete="off"
-              aria-label="Ajouter un médicament à votre ordonnance"
-              value={listQuery}
-              onChange={(event) => setListQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  listQuery.trim() &&
-                  listSuggestions[0] &&
-                  !selectedMedicineIds.includes(listSuggestions[0].id)
-                ) {
-                  event.preventDefault();
-                  addMedicineToList(listSuggestions[0].id);
-                  setListQuery("");
-                }
-              }}
-              placeholder="Ajouter 2 à 8 médicaments (nom ou forme)…"
-              className="min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
-            />
-            {listQuery ? (
+                ) : null}
+                {saving ? (
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-xs font-semibold text-white">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                    Sync…
+                  </span>
+                ) : null}
+                {canInstallPwa && onInstallPwa ? (
+                  <button
+                    type="button"
+                    onClick={onInstallPwa}
+                    aria-label="Installer l'application"
+                    className="inline-flex h-9 items-center gap-1 rounded-full bg-white/15 px-3 text-xs font-semibold text-white transition hover:bg-white/25"
+                  >
+                    <IconDownload className="h-3.5 w-3.5" />
+                    <span>Installer</span>
+                  </button>
+                ) : null}
+              </div>
+
               <button
                 type="button"
-                onClick={() => {
-                  setListQuery("");
-                  listInputRef.current?.focus();
-                }}
-                aria-label="Effacer la saisie d'ordonnance"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={onOpenAccount}
+                className="inline-flex h-9 max-w-[190px] shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-bold text-slate-900 shadow-sm transition hover:bg-emerald-50"
               >
-                <IconClose className="h-5 w-5" />
-              </button>
-            ) : null}
-
-            <div className="hidden shrink-0 items-center sm:flex">
-              <span aria-hidden="true" className="mx-1.5 h-7 w-px bg-slate-200" />
-              <select
-                aria-label="Commune"
-                value={quartier}
-                onChange={(event) => setQuartier(event.target.value)}
-                className="h-11 max-w-[180px] rounded-xl bg-transparent px-3 py-2.5 text-sm font-semibold leading-snug text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {quartiers.map((item) => (
-                  <option key={item} value={item} className="bg-white text-slate-900">
-                    {item === "Tous" ? "Tout Abidjan" : item}
-                  </option>
-                ))}
-              </select>
-
-              <span aria-hidden="true" className="mx-1.5 h-7 w-px bg-slate-200" />
-
-              {userLocation ? (
-                <button
-                  type="button"
-                  onClick={clearLocation}
-                  aria-label="Désactiver la position GPS"
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
-                >
-                  <IconCrosshair className="h-4 w-4 text-brand-700" />
-                  <span>GPS actif</span>
-                  <IconClose className="h-4 w-4 text-brand-700" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={requestLocation}
-                  disabled={locationStatus === "locating"}
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-60"
-                >
-                  <IconCrosshair className="h-4 w-4" />
-                  <span>
-                    {locationStatus === "locating" ? "Localisation…" : "Autour de moi"}
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-3.5 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setOnlyDuty(false);
-              setOnlyOpen(false);
-              setOnlyFavorites(false);
-            }}
-            aria-pressed={!onlyDuty && !onlyOpen && !onlyFavorites}
-            className={cn(
-              "inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold transition",
-              !onlyDuty && !onlyOpen && !onlyFavorites
-                ? "bg-white text-brand-800 shadow-sm"
-                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
-            )}
-          >
-            Toutes
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setOnlyDuty((value) => !value)}
-            aria-pressed={onlyDuty}
-            className={cn(
-              "inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition",
-              onlyDuty
-                ? "bg-white text-brand-800 shadow-sm"
-                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
-            )}
-          >
-            <span>De garde 24h/24</span>
-            {dutyCount > 0 ? (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
-                  onlyDuty
-                    ? "bg-brand-100 text-brand-800"
-                    : "bg-white/20 text-white",
+                {accountLabel ? (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                    />
+                    <span className="truncate">{accountLabel}</span>
+                  </>
+                ) : (
+                  <>
+                    <IconPharmacy className="h-3.5 w-3.5 shrink-0 text-brand-700" />
+                    <span>Compte</span>
+                  </>
                 )}
-              >
-                {dutyCount}
-              </span>
-            ) : null}
-          </button>
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setOnlyOpen((value) => !value)}
-            aria-pressed={onlyOpen}
-            className={cn(
-              "inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold transition",
-              onlyOpen
-                ? "bg-white text-brand-800 shadow-sm"
-                : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
-            )}
+            <div className="mt-2 text-center">
+              <h1 className="font-display text-lg font-bold tracking-tight text-white">
+                {mode === "single"
+                  ? "Kéné · Pharmacies d'Abidjan"
+                  : "Mon ordonnance"}
+              </h1>
+              <p className="mt-0.5 text-xs font-medium text-emerald-100/90 tabular-nums">
+                {visiblePharmacies.length} pharmacies vérifiées · {dutyCount} de
+                garde 24h/24
+              </p>
+            </div>
+          </header>
+
+          {/* 2. Floating Signature Focal Search Card */}
+          <section
+            aria-label="Recherche de médicaments"
+            style={CARD_PATTERN}
+            className="relative z-10 mx-4 -mt-12 rounded-[22px] bg-gradient-to-br from-[#14B89A] via-[#0EA58C] to-[#088A75] p-3.5 shadow-float"
           >
-            Ouvertes
-          </button>
-
-          {favoritePharmacyIds.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setOnlyFavorites((value) => !value)}
-              aria-pressed={onlyFavorites}
-              className={cn(
-                "inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition",
-                onlyFavorites
-                  ? "bg-white text-brand-800 shadow-sm"
-                  : "border border-white/25 bg-white/15 text-white hover:bg-white/25",
-              )}
-            >
-              <span>Favorites ({favoritePharmacyIds.length})</span>
-            </button>
-          ) : null}
-
-          {userLocation ? (
-            <button
-              type="button"
-              onClick={clearLocation}
-              aria-label="Désactiver la position GPS"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-brand-800 shadow-sm sm:hidden"
-            >
-              <IconCrosshair className="h-4 w-4 text-brand-700" />
-              <span>Autour de moi</span>
-              <IconClose className="h-4 w-4 text-brand-700" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={requestLocation}
-              disabled={locationStatus === "locating"}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 text-sm font-semibold text-white transition hover:bg-white/25 disabled:opacity-60 sm:hidden"
-            >
-              <IconCrosshair className="h-4 w-4" />
-              <span>
-                {locationStatus === "locating" ? "Localisation…" : "Autour de moi"}
-              </span>
-            </button>
-          )}
-
-          <select
-            aria-label="Commune"
-            value={quartier}
-            onChange={(event) => setQuartier(event.target.value)}
-            className="min-h-[40px] rounded-full border border-white/25 bg-white/15 px-4 py-2.5 text-sm font-semibold leading-snug text-white focus:outline-none focus:ring-2 focus:ring-white sm:hidden"
-          >
-            {quartiers.map((item) => (
-              <option key={item} value={item} className="bg-white text-slate-900">
-                {item === "Tous" ? "Tout Abidjan" : item}
-              </option>
-            ))}
-          </select>
-
-          {mode === "single" ? (
-            <button
-              type="button"
-              onClick={() => {
-                setMode("list");
-                requestAnimationFrame(() => listInputRef.current?.focus());
-              }}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold text-emerald-50 transition hover:bg-white/15 hover:text-white sm:ml-auto"
-            >
-              {selectedMedicineIds.length > 0
-                ? `Mon ordonnance (${selectedMedicineIds.length})`
-                : "+ Chercher toute une ordonnance"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setMode("single");
-                requestAnimationFrame(() => inputRef.current?.focus());
-              }}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 text-sm font-semibold text-white transition hover:bg-white/25 sm:ml-auto"
-            >
-              ← Recherche simple
-            </button>
-          )}
-        </div>
-
-        {mode === "single" ? (
-          hasSingleQuery ? (
-            suggestions.length > 0 ? (
-              <div
-                onMouseDown={() => {
-                  suppressBlurRef.current = true;
-                }}
-                className="mt-4 flex flex-wrap items-center gap-2"
-              >
-                {suggestions.map((medicine) => (
-                  <button
-                    key={medicine.id}
-                    type="button"
-                    onClick={() => {
-                      setQuery(medicine.name);
-                      addRecentSearch(medicine.name);
+            <div className="rounded-2xl bg-white p-2 shadow-sm">
+              {mode === "single" ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (query.trim()) addRecentSearch(query);
+                  }}
+                  className="flex h-11 items-center gap-1.5 px-1.5"
+                >
+                  <IconSearch className="h-5 w-5 shrink-0 text-brand-700" />
+                  <input
+                    ref={inputRef}
+                    type="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    aria-label="Rechercher un médicament"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onBlur={() => {
+                      if (suppressBlurRef.current) {
+                        suppressBlurRef.current = false;
+                        return;
+                      }
+                      if (query.trim().length >= 2) addRecentSearch(query);
                     }}
-                    className="inline-flex min-h-[38px] items-center rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-emerald-50"
-                  >
-                    {medicine.name}
-                  </button>
-                ))}
-              </div>
-            ) : null
-          ) : (
-            <div
-              onMouseDown={() => {
-                suppressBlurRef.current = true;
-              }}
-              className="mt-4 space-y-2.5"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {QUICK_SEARCHES.map((term) => (
-                  <button
-                    key={term}
-                    type="button"
-                    onClick={() => {
-                      setQuery(term);
-                      addRecentSearch(term);
-                    }}
-                    className="inline-flex min-h-[38px] items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-white/25"
-                  >
-                    {term}
-                  </button>
-                ))}
-              </div>
-
-              {recentSearches.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-emerald-100">
-                    Récentes :
-                  </span>
-                  {recentSearches.map((term) => (
+                    placeholder="Rechercher un médicament…"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {query ? (
                     <button
-                      key={term}
                       type="button"
                       onClick={() => {
-                        setQuery(term);
-                        addRecentSearch(term);
+                        setQuery("");
+                        inputRef.current?.focus();
                       }}
-                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-brand-800/80 px-3.5 py-1 text-sm font-medium text-white transition hover:bg-brand-800"
+                      aria-label="Effacer la recherche"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                     >
-                      <IconClock className="h-3.5 w-3.5 text-emerald-200" />
-                      {term}
+                      <IconClose className="h-4 w-4" />
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={clearRecentSearches}
-                    className="px-2 py-1 text-sm font-medium text-emerald-100 underline-offset-2 transition hover:text-white hover:underline"
-                  >
-                    Effacer
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          )
-        ) : (
-          <div className="mt-4 space-y-3 border-t border-white/15 pt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-emerald-100">
-                {listQuery.trim() ? "Ajouter :" : "Ajouts rapides :"}
-              </span>
-              {listSuggestions.map((medicine) => {
-                const selected = selectedMedicineIds.includes(medicine.id);
-                const full = selectedMedicineIds.length >= MAX_LIST_ITEMS;
-                return (
-                  <button
-                    key={medicine.id}
-                    type="button"
-                    disabled={selected || full}
-                    onClick={() => {
-                      addMedicineToList(medicine.id);
-                      setListQuery("");
+                  ) : null}
+                </form>
+              ) : (
+                <div className="flex h-11 items-center gap-1.5 px-1.5">
+                  <IconSearch className="h-5 w-5 shrink-0 text-brand-700" />
+                  <input
+                    ref={listInputRef}
+                    type="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    aria-label="Ajouter un médicament à votre ordonnance"
+                    value={listQuery}
+                    onChange={(event) => setListQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        listQuery.trim() &&
+                        listSuggestions[0] &&
+                        !selectedMedicineIds.includes(listSuggestions[0].id)
+                      ) {
+                        event.preventDefault();
+                        addMedicineToList(listSuggestions[0].id);
+                        setListQuery("");
+                      }
                     }}
-                    className={cn(
-                      "inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
-                      selected
-                        ? "border-white/30 bg-white/25 text-white opacity-80"
-                        : "border-white/20 bg-white/15 text-white hover:bg-white/25 disabled:opacity-50",
-                    )}
+                    placeholder="Ajouter un médicament (2 à 8)…"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {listQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setListQuery("");
+                        listInputRef.current?.focus();
+                      }}
+                      aria-label="Effacer la saisie d'ordonnance"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <IconClose className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
+              <div className="mt-1 flex items-center justify-between gap-2 border-t border-slate-100 px-1.5 pt-1.5">
+                <label className="inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-slate-600">
+                  <IconMapPin className="h-3.5 w-3.5 shrink-0 text-brand-700" />
+                  <select
+                    aria-label="Commune"
+                    value={quartier}
+                    onChange={(event) => setQuartier(event.target.value)}
+                    className="max-w-[155px] truncate bg-transparent py-1 text-xs font-semibold text-slate-800 focus:outline-none"
                   >
-                    {selected ? (
-                      <IconCheck className="h-4 w-4" />
-                    ) : (
-                      <IconPlus className="h-4 w-4" />
-                    )}
-                    <span>{medicine.name}</span>
-                  </button>
-                );
-              })}
+                    {quartiers.map((item) => (
+                      <option key={item} value={item}>
+                        {item === "Tous" ? "Tout Abidjan" : item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mode === "single") {
+                      setMode("list");
+                      requestAnimationFrame(() => listInputRef.current?.focus());
+                    } else {
+                      setMode("single");
+                      requestAnimationFrame(() => inputRef.current?.focus());
+                    }
+                  }}
+                  className="shrink-0 text-xs font-bold text-brand-700 transition hover:text-brand-800"
+                >
+                  {mode === "single"
+                    ? selectedMedicineIds.length > 0
+                      ? `Ordonnance (${selectedMedicineIds.length})`
+                      : "+ Ordonnance"
+                    : "← Recherche simple"}
+                </button>
+              </div>
             </div>
 
-            {selectedMedicines.length === 0 ? (
-              <p className="text-sm text-emerald-50">
-                Sélectionnez 2 à 8 médicaments pour trouver les pharmacies disposant de
-                toute votre ordonnance.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-white">
-                    Votre ordonnance ({selectedMedicines.length}/{MAX_LIST_ITEMS}) :
-                  </span>
-                  {selectedMedicines.map((medicine) => (
+            <div className="mt-2 flex items-center justify-between px-1">
+              <span className="text-[11px] font-semibold text-white/90">
+                Gratuit · Temps réel
+              </span>
+              <IconLogo className="h-6 w-6 text-white/95" />
+            </div>
+          </section>
+
+          {/* 3. White Rounded Sheet: 2×4 Circular Pastel Icon Grid */}
+          <section
+            aria-label="Raccourcis rapides"
+            className="-mt-4 rounded-t-[28px] bg-white px-4 pb-5 pt-8"
+          >
+            <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+              <button
+                type="button"
+                onClick={() => setOnlyDuty((value) => !value)}
+                aria-pressed={onlyDuty}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition group-active:scale-95",
+                    onlyDuty && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconClock className="h-5 w-5" />
+                  {dutyCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-700 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+                      {dutyCount}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  De garde
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOnlyOpen((value) => !value)}
+                aria-pressed={onlyOpen}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 transition group-active:scale-95",
+                    onlyOpen && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconPharmacy className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  Ouvertes
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={locationStatus === "locating"}
+                onClick={() => {
+                  if (userLocation) {
+                    clearLocation();
+                  } else {
+                    requestLocation();
+                  }
+                }}
+                aria-pressed={Boolean(userLocation)}
+                className="group flex flex-col items-center gap-1.5 text-center disabled:opacity-60"
+              >
+                <span
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-700 transition group-active:scale-95",
+                    userLocation && "ring-2 ring-brand-700 ring-offset-2",
+                    locationStatus === "locating" && "animate-pulse",
+                  )}
+                >
+                  <IconCrosshair className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  {locationStatus === "locating" ? "GPS…" : "Proximité"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (mode === "single") {
+                    setMode("list");
+                    requestAnimationFrame(() => listInputRef.current?.focus());
+                  } else {
+                    setMode("single");
+                  }
+                }}
+                aria-pressed={mode === "list"}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-700 transition group-active:scale-95",
+                    mode === "list" && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconList className="h-5 w-5" />
+                  {selectedMedicineIds.length > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-700 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+                      {selectedMedicineIds.length}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  Ordonnance
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleMapAction}
+                aria-pressed={display === "map"}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-teal-700 transition group-active:scale-95",
+                    display === "map" && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconMap className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  Carte
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (favoritePharmacyIds.length === 0) {
+                    notify(
+                      "Touchez l'étoile d'une pharmacie pour l'ajouter à vos favoris.",
+                    );
+                    return;
+                  }
+                  setOnlyFavorites((value) => !value);
+                }}
+                aria-pressed={onlyFavorites}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-pink-600 transition group-active:scale-95",
+                    onlyFavorites && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconStar filled={onlyFavorites} className="h-5 w-5" />
+                  {favoritePharmacyIds.length > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+                      {favoritePharmacyIds.length}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  Favoris
+                </span>
+              </button>
+
+              <a
+                href="tel:185"
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 transition group-active:scale-95">
+                  <IconPhone className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  SAMU 185
+                </span>
+              </a>
+
+              <button
+                type="button"
+                onClick={onOpenAccount}
+                className="group flex flex-col items-center gap-1.5 text-center"
+              >
+                <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 transition group-active:scale-95">
+                  <IconUserCheck className="h-5 w-5" />
+                  {accountLabel ? (
                     <span
-                      key={medicine.id}
-                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full bg-white pl-3.5 pr-2 py-1 text-sm font-semibold text-brand-800 shadow-sm"
-                    >
-                      <span>{medicine.name}</span>
+                      aria-hidden="true"
+                      className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+                    />
+                  ) : null}
+                </span>
+                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                  Compte
+                </span>
+              </button>
+            </div>
+
+            {/* Single-row horizontal quick chips or prescription selection */}
+            {mode === "single" ? (
+              <div className="mt-5">
+                {hasSingleQuery && suggestions.length > 0 ? (
+                  <div
+                    onMouseDown={() => {
+                      suppressBlurRef.current = true;
+                    }}
+                    className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1"
+                  >
+                    {suggestions.map((medicine) => (
+                      <button
+                        key={medicine.id}
+                        type="button"
+                        onClick={() => {
+                          setQuery(medicine.name);
+                          addRecentSearch(medicine.name);
+                        }}
+                        className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+                      >
+                        {medicine.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+                    {popular.slice(0, 6).map((medicine) => (
+                      <button
+                        key={medicine.id}
+                        type="button"
+                        onClick={() => {
+                          setQuery(medicine.name);
+                          addRecentSearch(medicine.name);
+                        }}
+                        className={cn(
+                          "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                          query.trim().toLowerCase() === medicine.name.toLowerCase()
+                            ? "bg-brand-700 text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                        )}
+                      >
+                        {medicine.name}
+                      </button>
+                    ))}
+                    {recentSearches.length > 0 ? (
                       <button
                         type="button"
-                        onClick={() => removeMedicineFromList(medicine.id)}
-                        aria-label={`Retirer ${medicine.name}`}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-brand-700 transition hover:bg-brand-50 hover:text-brand-900"
+                        onClick={clearRecentSearches}
+                        className="shrink-0 px-2 text-[11px] font-medium text-slate-400 hover:text-slate-700"
                       >
-                        <IconClose className="h-4 w-4" />
+                        Effacer hist.
                       </button>
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={copySelectedList}
-                    className="px-2 py-1 text-sm font-semibold text-emerald-50 underline-offset-2 hover:text-white hover:underline"
-                  >
-                    Copier
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMedicineIds([])}
-                    className="px-2 py-1 text-sm font-medium text-emerald-100 underline-offset-2 hover:text-white hover:underline"
-                  >
-                    Vider
-                  </button>
-                </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                {selectedMedicines.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedMedicines.map((medicine) => (
+                      <button
+                        key={medicine.id}
+                        type="button"
+                        onClick={() => removeMedicineFromList(medicine.id)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800"
+                      >
+                        <span>{medicine.name}</span>
+                        <IconClose className="h-3.5 w-3.5" />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={copySelectedList}
+                      className="inline-flex h-8 items-center rounded-full border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Copier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMedicineIds([])}
+                      className="inline-flex h-8 items-center rounded-full px-2 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                    >
+                      Vider
+                    </button>
+                  </div>
+                ) : null}
 
-                {selectedMedicines.length === 1 ? (
-                  <p className="text-sm font-medium text-amber-200">
-                    Ajoutez encore au moins 1 médicament (2 à 8 recommandés) pour comparer
-                    toute votre ordonnance.
+                <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+                  {listSuggestions.map((medicine) => {
+                    const added = selectedMedicineIds.includes(medicine.id);
+                    return (
+                      <button
+                        key={medicine.id}
+                        type="button"
+                        disabled={added}
+                        onClick={() => {
+                          addMedicineToList(medicine.id);
+                          setListQuery("");
+                        }}
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                          added
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                        )}
+                      >
+                        {added ? (
+                          <IconCheck className="h-3.5 w-3.5" />
+                        ) : (
+                          <IconPlus className="h-3.5 w-3.5" />
+                        )}
+                        <span>{medicine.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 4. Wave Gray Section Divider */}
+          <div aria-hidden="true" className="h-2.5 bg-[#F2F4F7]" />
+
+          {/* 5. Clean Divided Pharmacy / Medicine List */}
+          <section aria-label="Résultats" className="bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3.5 sm:px-5">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">{feedTitle}</h2>
+                {onlyDuty ? (
+                  <p className="mt-0.5 text-xs font-medium text-brand-700">
+                    Permanence 24 h/24 · Appelez avant de vous déplacer la nuit.
                   </p>
                 ) : null}
               </div>
-            )}
-          </div>
-        )}
-      </section>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:items-start lg:gap-6">
-        <div ref={resultsColumnRef} className="min-w-0 space-y-4">
-          {mode === "single" ? (
-            hasSingleQuery ? (
-              <>
-                <p role="status" aria-live="polite" className="sr-only">
-                  {rows.length} pharmacie{rows.length > 1 ? "s" : ""} référence
-                  {rows.length > 1 ? "nt" : ""} « {query.trim()} », dont {openNow}{" "}
-                  ouverte{openNow > 1 ? "s" : ""} avec du stock.
-                </p>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">
-                      {rows.length === 0
-                        ? `Aucune pharmacie pour « ${query.trim()} »`
-                        : uniqueRowPharmacies === rows.length
-                          ? `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} »`
-                          : `${uniqueRowPharmacies} pharmacie${uniqueRowPharmacies > 1 ? "s ont" : " a"} « ${query.trim()} » · ${rows.length} présentations`}
-                    </h2>
-                    {onlyDuty ? (
-                      <p className="mt-0.5 text-sm font-medium text-brand-700">
-                        Permanence 24 h/24 · Appelez la pharmacie avant de vous
-                        déplacer la nuit.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {hasActiveFilters ? (
-                      <button
-                        type="button"
-                        onClick={resetAllFilters}
-                        className="inline-flex h-11 items-center rounded-xl px-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800"
-                      >
-                        Effacer les filtres
-                      </button>
-                    ) : null}
-                    {rows.length > 0 ? (
-                      <DisplayToggle
-                        display={display}
-                        onChange={setDisplay}
-                        ariaLabel="Affichage des résultats"
-                      />
-                    ) : null}
-                  </div>
-                </div>
-
-                {rows.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center shadow-card">
-                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                      <IconPill className="h-6 w-6" />
-                    </span>
-                    <p className="mt-3 text-base font-bold text-slate-900">
-                      Aucune pharmacie ne correspond à votre recherche
-                    </p>
-                    <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-600">
-                      Essayez le nom de la molécule, choisissez « Tout Abidjan » ou
-                      contactez une pharmacie de garde.
-                    </p>
-                    {hasActiveFilters ? (
-                      <button
-                        type="button"
-                        onClick={resetAllFilters}
-                        className="btn-secondary mt-5 h-12 px-5 text-[15px]"
-                      >
-                        Effacer les filtres
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    {display === "map" ? (
-                      <div className="h-[65vh] min-h-[400px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-card lg:hidden">
-                        <PharmacyMap
-                          fillHeight
-                          markers={activeMarkers}
-                          userLocation={userLocation}
-                          activePharmacyId={activePharmacyId}
-                          onSelectPharmacy={handleSelectPharmacyFromMap}
-                        />
-                      </div>
-                    ) : null}
-
-                    <div
-                      className={cn(
-                        "space-y-4",
-                        display === "map" && canShowMobileMap && "hidden lg:block",
-                      )}
-                    >
-                      {rows.map(
-                        ({ pharmacy, medicine, stock, level, open, distanceKm }) => {
-                          const isFav = favoritePharmacyIds.includes(pharmacy.id);
-                          const isActive = activePharmacyId === pharmacy.id;
-                          return (
-                            <PharmacyCardShell
-                              key={`${pharmacy.id}-${medicine.id}`}
-                              pharmacyId={pharmacy.id}
-                              isActive={isActive}
-                              dimmed={level === "out"}
-                              onHover={setHoveredPharmacyId}
-                              onSelect={setSelectedPharmacyId}
-                            >
-                              <PharmacyCardHeader
-                                pharmacy={pharmacy}
-                                open={open}
-                                isFav={isFav}
-                                onToggleFavorite={toggleFavoritePharmacy}
-                                rightSlot={
-                                  <>
-                                    <p
-                                      className={cn(
-                                        "text-2xl font-extrabold tabular-nums tracking-tight",
-                                        level === "out"
-                                          ? "text-slate-500"
-                                          : "text-brand-700",
-                                      )}
-                                    >
-                                      {fcfa(stock.price)}
-                                    </p>
-                                    <p
-                                      className={cn(
-                                        "mt-0.5 text-sm font-semibold tabular-nums",
-                                        level === "available"
-                                          ? "text-emerald-700"
-                                          : level === "low"
-                                            ? "text-amber-700"
-                                            : "text-rose-700",
-                                      )}
-                                    >
-                                      {level === "available"
-                                        ? "En stock"
-                                        : level === "low"
-                                          ? `Plus que ${stock.quantity} boîte${stock.quantity > 1 ? "s" : ""}`
-                                          : "Rupture"}
-                                    </p>
-                                  </>
-                                }
-                              />
-
-                              <PharmacyCardMeta
-                                pharmacy={pharmacy}
-                                distanceKm={distanceKm}
-                              />
-
-                              <p className="mt-2.5 text-[15px] font-medium text-slate-800">
-                                {medicine.name}{" "}
-                                <span className="font-normal text-slate-600">
-                                  · {medicine.form}
-                                </span>
-                              </p>
-
-                              <PharmacyCardFooter
-                                pharmacy={pharmacy}
-                                userLocation={userLocation}
-                                primaryDirections={level !== "out"}
-                                waText={`Bonjour, avez-vous actuellement ${medicine.name} (${medicine.form}) en stock ? (vu sur Kéné)`}
-                                timestampText={`Déclaré ${timeAgo(stock.updatedAt)}`}
-                              />
-                            </PharmacyCardShell>
-                          );
-                        },
-                      )}
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">
-                      {nearbyPharmacies.length} pharmacie
-                      {nearbyPharmacies.length > 1 ? "s" : ""} vérifiée
-                      {nearbyPharmacies.length > 1 ? "s" : ""}
-                    </h2>
-                    {onlyDuty ? (
-                      <p className="mt-0.5 text-sm font-medium text-brand-700">
-                        Permanence 24 h/24 · Appelez la pharmacie avant de vous
-                        déplacer la nuit.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {hasActiveFilters ? (
-                      <button
-                        type="button"
-                        onClick={resetAllFilters}
-                        className="inline-flex h-11 items-center rounded-xl px-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800"
-                      >
-                        Effacer les filtres
-                      </button>
-                    ) : null}
-                    {nearbyPharmacies.length > 0 ? (
-                      <DisplayToggle
-                        display={display}
-                        onChange={setDisplay}
-                        ariaLabel="Affichage des pharmacies vérifiées"
-                      />
-                    ) : null}
-                  </div>
-                </div>
-
-                {nearbyPharmacies.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center shadow-card">
-                    <p className="text-base font-bold text-slate-900">
-                      Aucune pharmacie pour ces filtres
-                    </p>
-                    <p className="mt-1.5 text-sm text-slate-600">
-                      Élargissez la commune ou effacez les filtres ci-dessus.
-                    </p>
-                    {hasActiveFilters ? (
-                      <button
-                        type="button"
-                        onClick={resetAllFilters}
-                        className="btn-secondary mt-5 h-12 px-5 text-[15px]"
-                      >
-                        Effacer les filtres
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    {display === "map" ? (
-                      <div className="h-[65vh] min-h-[400px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-card lg:hidden">
-                        <PharmacyMap
-                          fillHeight
-                          markers={activeMarkers}
-                          userLocation={userLocation}
-                          activePharmacyId={activePharmacyId}
-                          onSelectPharmacy={handleSelectPharmacyFromMap}
-                        />
-                      </div>
-                    ) : null}
-
-                    <div
-                      className={cn(
-                        "space-y-4",
-                        display === "map" && canShowMobileMap && "hidden lg:block",
-                      )}
-                    >
-                      {nearbyPharmacies.map(
-                        ({
-                          pharmacy,
-                          open,
-                          distanceKm,
-                          inStockItems,
-                          latestUpdate,
-                        }) => {
-                          const isFav = favoritePharmacyIds.includes(pharmacy.id);
-                          const isExpanded = expandedPharmacyIds.includes(pharmacy.id);
-                          const isActive = activePharmacyId === pharmacy.id;
-                          return (
-                            <PharmacyCardShell
-                              key={pharmacy.id}
-                              pharmacyId={pharmacy.id}
-                              isActive={isActive}
-                              onHover={setHoveredPharmacyId}
-                              onSelect={setSelectedPharmacyId}
-                            >
-                              <PharmacyCardHeader
-                                pharmacy={pharmacy}
-                                open={open}
-                                isFav={isFav}
-                                onToggleFavorite={toggleFavoritePharmacy}
-                                rightSlot={
-                                  <p className="text-base font-bold tabular-nums text-brand-700 sm:text-lg">
-                                    {inStockItems.length} médicament
-                                    {inStockItems.length > 1 ? "s" : ""} en stock
-                                  </p>
-                                }
-                              />
-
-                              <PharmacyCardMeta
-                                pharmacy={pharmacy}
-                                distanceKm={distanceKm}
-                              />
-
-                              {inStockItems.length > 0 ? (
-                                <div className="mt-4">
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      toggleExpandedPharmacy(pharmacy.id);
-                                    }}
-                                    aria-expanded={isExpanded}
-                                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-brand-300 hover:bg-brand-50/70 hover:text-brand-800"
-                                  >
-                                    <span>
-                                      {isExpanded
-                                        ? `Masquer les médicaments (${inStockItems.length})`
-                                        : `Voir les médicaments en stock (${inStockItems.length})`}
-                                    </span>
-                                    <IconChevronRight
-                                      className={cn(
-                                        "h-4 w-4 text-brand-700 transition-transform",
-                                        isExpanded ? "-rotate-90" : "rotate-90",
-                                      )}
-                                    />
-                                  </button>
-
-                                  {isExpanded ? (
-                                    <ul className="scroll-thin mt-3 max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                                      {inStockItems.map(({ medicine, stock }) => {
-                                        const level = stockLevel(stock);
-                                        return (
-                                          <li key={medicine.id}>
-                                            <button
-                                              type="button"
-                                              onClick={(event) => {
-                                                event.stopPropagation();
-                                                setQuery(medicine.name);
-                                                addRecentSearch(medicine.name);
-                                              }}
-                                              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-brand-50/60"
-                                            >
-                                              <div className="min-w-0 flex-1">
-                                                <p className="truncate text-[15px] font-medium text-slate-900">
-                                                  {medicine.name}
-                                                </p>
-                                                <p
-                                                  className={cn(
-                                                    "text-[13px] font-medium",
-                                                    level === "low"
-                                                      ? "text-amber-700"
-                                                      : "text-slate-600",
-                                                  )}
-                                                >
-                                                  {level === "low"
-                                                    ? `Plus que ${stock.quantity} boîte${stock.quantity > 1 ? "s" : ""}`
-                                                    : "En stock"}
-                                                </p>
-                                              </div>
-                                              <span className="shrink-0 text-[15px] font-bold tabular-nums text-brand-700">
-                                                {fcfa(stock.price)}
-                                              </span>
-                                            </button>
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
-                              <PharmacyCardFooter
-                                pharmacy={pharmacy}
-                                userLocation={userLocation}
-                                waText="Bonjour, je vérifie la disponibilité de médicaments dans votre officine. (via Kéné)"
-                                timestampText={
-                                  latestUpdate
-                                    ? `Mis à jour ${timeAgo(latestUpdate)}`
-                                    : "Stock déclaré"
-                                }
-                              />
-                            </PharmacyCardShell>
-                          );
-                        },
-                      )}
-                    </div>
-                  </>
-                )}
-              </>
-            )
-          ) : selectedMedicineIds.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center shadow-card">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                <IconList className="h-6 w-6" />
-              </span>
-              <p className="mt-3 text-base font-bold text-slate-900">
-                Comparez plusieurs médicaments en une seule fois
-              </p>
-              <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-600">
-                Ajoutez de 2 à 8 médicaments ci-dessus pour voir quelles pharmacies
-                disposent de toute votre ordonnance et estimer le total.
-              </p>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="inline-flex h-8 items-center rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                  >
+                    Tout voir
+                  </button>
+                ) : null}
+                {display === "map" && canShowMobileMap ? (
+                  <button
+                    type="button"
+                    onClick={() => setDisplay("list")}
+                    className="inline-flex h-8 items-center rounded-full bg-brand-700 px-3 text-xs font-semibold text-white lg:hidden"
+                  >
+                    ← Liste
+                  </button>
+                ) : null}
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-                <h2 role="status" aria-live="polite" className="text-lg font-bold text-slate-900">
-                  {listResults.length} pharmacie{listResults.length > 1 ? "s" : ""} ·{" "}
-                  {completeListCount} avec toute l&apos;ordonnance
-                </h2>
 
-                <div className="flex items-center gap-2">
-                  {hasActiveFilters ? (
-                    <button
-                      type="button"
-                      onClick={resetAllFilters}
-                      className="inline-flex h-11 items-center rounded-xl px-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800"
-                    >
-                      Effacer les filtres
-                    </button>
-                  ) : null}
-                  {listResults.length > 0 ? (
-                    <DisplayToggle
-                      display={display}
-                      onChange={setDisplay}
-                      ariaLabel="Affichage des résultats de l'ordonnance"
-                    />
-                  ) : null}
+            {display === "map" && canShowMobileMap ? (
+              <div className="p-3 lg:hidden">
+                <div className="h-[440px] overflow-hidden rounded-2xl border border-slate-200">
+                  <PharmacyMap
+                    fillHeight
+                    markers={activeMarkers}
+                    userLocation={userLocation}
+                    activePharmacyId={activePharmacyId}
+                    onSelectPharmacy={handleSelectPharmacyFromMap}
+                  />
                 </div>
               </div>
+            ) : null}
 
-              {listResults.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center shadow-card">
-                  <p className="text-base font-bold text-slate-900">
-                    Aucune pharmacie ne correspond à ces filtres
-                  </p>
-                  <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-600">
-                    Élargissez la commune ou effacez vos filtres.
-                  </p>
-                  {hasActiveFilters ? (
-                    <button
-                      type="button"
-                      onClick={resetAllFilters}
-                      className="btn-secondary mt-5 h-12 px-5 text-[15px]"
-                    >
-                      Effacer les filtres
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <>
-                  {display === "map" ? (
-                    <div className="h-[65vh] min-h-[400px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-card lg:hidden">
-                      <PharmacyMap
-                        fillHeight
-                        markers={activeMarkers}
-                        userLocation={userLocation}
-                        activePharmacyId={activePharmacyId}
-                        onSelectPharmacy={handleSelectPharmacyFromMap}
-                      />
-                    </div>
-                  ) : null}
-
-                  <div
-                    className={cn(
-                      "space-y-4",
-                      display === "map" && canShowMobileMap && "hidden lg:block",
-                    )}
-                  >
+            <div className={cn(display === "map" && canShowMobileMap && "hidden lg:block")}>
+              {mode === "list" ? (
+                selectedMedicineIds.length === 0 ? (
+                  <div className="px-5 py-10 text-center">
+                    <IconPill className="mx-auto h-7 w-7 text-slate-400" />
+                    <p className="mt-2 text-sm font-bold text-slate-900">
+                      Ajoutez les médicaments de votre ordonnance
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Nous classons en priorité les pharmacies qui disposent de toute
+                      la liste.
+                    </p>
+                  </div>
+                ) : listResults.length === 0 ? (
+                  <div className="px-5 py-10 text-center">
+                    <p className="text-sm font-bold text-slate-900">
+                      Aucune pharmacie pour ces filtres
+                    </p>
+                    {hasActiveFilters ? (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="mt-3 inline-flex h-9 items-center rounded-full bg-slate-100 px-4 text-xs font-semibold text-slate-800 hover:bg-slate-200"
+                      >
+                        Tout voir
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
                     {listResults.map((result) => {
                       const {
                         pharmacy,
@@ -1652,123 +1356,284 @@ export default function Search({
                       const isFav = favoritePharmacyIds.includes(pharmacy.id);
                       const isActive = activePharmacyId === pharmacy.id;
                       const listSummary = selectedMedicines
-                        .map((medicine) => `• ${medicine.name} (${medicine.form})`)
+                        .map((medicine) => `• ${medicine.name}`)
                         .join("\n");
+
                       return (
-                        <PharmacyCardShell
+                        <PharmacyRowShell
                           key={pharmacy.id}
                           pharmacyId={pharmacy.id}
                           isActive={isActive}
-                          dimmed={availableCount === 0}
                           onHover={setHoveredPharmacyId}
                           onSelect={setSelectedPharmacyId}
                         >
-                          <PharmacyCardHeader
+                          <PharmacyRowHeader
                             pharmacy={pharmacy}
                             open={open}
+                            distanceKm={distanceKm}
                             isFav={isFav}
                             onToggleFavorite={toggleFavoritePharmacy}
-                            rightSlot={
-                              <>
-                                <p
-                                  className={cn(
-                                    "text-2xl font-extrabold tabular-nums tracking-tight",
-                                    availableCount > 0
-                                      ? "text-brand-700"
-                                      : "text-slate-500",
-                                  )}
-                                >
-                                  {availableCount > 0
-                                    ? fcfa(result.estimatedTotal)
-                                    : "—"}
-                                </p>
-                                <p
-                                  className={cn(
-                                    "mt-0.5 text-sm font-semibold tabular-nums",
-                                    result.complete
-                                      ? "text-emerald-700"
-                                      : availableCount > 0
-                                        ? "text-amber-700"
-                                        : "text-rose-700",
-                                  )}
-                                >
-                                  {result.complete
-                                    ? `Tout disponible (${availableCount}/${totalRequested})`
-                                    : availableCount > 0
-                                      ? `${availableCount}/${totalRequested} disponible${availableCount > 1 ? "s" : ""}`
-                                      : "Aucun produit disponible"}
-                                </p>
-                              </>
+                            rightTop={
+                              availableCount > 0 ? fcfa(result.estimatedTotal) : "—"
+                            }
+                            rightBottom={
+                              result.complete
+                                ? `Tout dispo (${availableCount}/${totalRequested})`
+                                : `${availableCount}/${totalRequested} dispo`
+                            }
+                            rightTone={
+                              result.complete
+                                ? "green"
+                                : availableCount > 0
+                                  ? "amber"
+                                  : "red"
                             }
                           />
 
-                          <PharmacyCardMeta
-                            pharmacy={pharmacy}
-                            distanceKm={distanceKm}
-                          />
-
-                          <ul className="mt-4 divide-y divide-slate-100 border-t border-slate-100 pt-1">
+                          <ul className="mt-2.5 space-y-1 rounded-xl bg-slate-50/90 p-2.5 text-xs">
                             {items.map((entry) => (
                               <li
                                 key={entry.medicine.id}
-                                className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
+                                className="flex items-center justify-between gap-2"
                               >
-                                <span className="font-medium text-slate-800">
+                                <span className="truncate font-medium text-slate-800">
                                   {entry.medicine.name}
                                 </span>
-                                <div className="flex items-center gap-3">
-                                  <span
-                                    className={cn(
-                                      "font-semibold",
-                                      entry.level === "available"
-                                        ? "text-emerald-700"
-                                        : entry.level === "low"
-                                          ? "text-amber-700"
-                                          : "text-rose-700",
-                                    )}
-                                  >
-                                    {entry.level === "available"
-                                      ? "En stock"
-                                      : entry.level === "low" && entry.stock
-                                        ? `Plus que ${entry.stock.quantity}`
-                                        : "Rupture"}
-                                  </span>
-                                  <span className="w-24 text-right font-bold tabular-nums text-slate-900">
-                                    {entry.stock && entry.level !== "out"
-                                      ? fcfa(entry.stock.price)
-                                      : "—"}
-                                  </span>
-                                </div>
+                                <span className="shrink-0 font-bold tabular-nums text-slate-900">
+                                  {entry.stock && entry.level !== "out"
+                                    ? fcfa(entry.stock.price)
+                                    : "Rupture"}
+                                </span>
                               </li>
                             ))}
                           </ul>
 
-                          <PharmacyCardFooter
+                          <PharmacyRowActions
                             pharmacy={pharmacy}
                             userLocation={userLocation}
                             primaryDirections={availableCount > 0}
                             waText={`Bonjour, avez-vous ces médicaments disponibles actuellement (vu sur Kéné) ?\n${listSummary}`}
                             timestampText={
                               result.latestUpdate
-                                ? `Déclaré ${timeAgo(result.latestUpdate)}`
-                                : "Aucune mise à jour récente"
+                                ? `${distanceLabel(distanceKm)} · ${timeAgo(result.latestUpdate)}`
+                                : distanceLabel(distanceKm)
                             }
                           />
-                        </PharmacyCardShell>
+                        </PharmacyRowShell>
                       );
                     })}
                   </div>
-                </>
+                )
+              ) : hasSingleQuery ? (
+                rows.length === 0 ? (
+                  <div className="px-5 py-10 text-center">
+                    <IconPill className="mx-auto h-7 w-7 text-slate-400" />
+                    <p className="mt-2 text-sm font-bold text-slate-900">
+                      Aucune pharmacie ne correspond à « {query.trim()} »
+                    </p>
+                    {hasActiveFilters ? (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="mt-3 inline-flex h-9 items-center rounded-full bg-slate-100 px-4 text-xs font-semibold text-slate-800 hover:bg-slate-200"
+                      >
+                        Tout voir
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {rows.map(({ pharmacy, medicine, stock, level, open, distanceKm }) => {
+                      const isFav = favoritePharmacyIds.includes(pharmacy.id);
+                      const isActive = activePharmacyId === pharmacy.id;
+                      const stockLabel =
+                        level === "available"
+                          ? "En stock"
+                          : level === "low"
+                            ? `Plus que ${stock.quantity}`
+                            : "Rupture";
+                      return (
+                        <PharmacyRowShell
+                          key={`${pharmacy.id}-${medicine.id}`}
+                          pharmacyId={pharmacy.id}
+                          isActive={isActive}
+                          dimmed={level === "out"}
+                          onHover={setHoveredPharmacyId}
+                          onSelect={setSelectedPharmacyId}
+                        >
+                          <PharmacyRowHeader
+                            pharmacy={pharmacy}
+                            open={open}
+                            distanceKm={distanceKm}
+                            isFav={isFav}
+                            onToggleFavorite={toggleFavoritePharmacy}
+                            rightTop={fcfa(stock.price)}
+                            rightBottom={stockLabel}
+                            rightTone={
+                              level === "available"
+                                ? "green"
+                                : level === "low"
+                                  ? "amber"
+                                  : "red"
+                            }
+                          />
+
+                          <p className="mt-1.5 text-xs font-medium text-slate-700">
+                            {medicine.name}{" "}
+                            <span className="font-normal text-slate-500">
+                              · {medicine.form}
+                            </span>
+                          </p>
+
+                          {pharmacy.onDuty && pharmacy.dutyNote ? (
+                            <p className="mt-1.5 text-xs font-medium text-brand-700">
+                              {pharmacy.dutyNote}
+                            </p>
+                          ) : null}
+
+                          <PharmacyRowActions
+                            pharmacy={pharmacy}
+                            userLocation={userLocation}
+                            primaryDirections={level !== "out"}
+                            waText={`Bonjour, avez-vous actuellement ${medicine.name} (${medicine.form}) en stock ? (vu sur Kéné)`}
+                            timestampText={`Déclaré ${timeAgo(stock.updatedAt)}`}
+                          />
+                        </PharmacyRowShell>
+                      );
+                    })}
+                  </div>
+                )
+              ) : nearbyPharmacies.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <p className="text-sm font-bold text-slate-900">
+                    Aucune pharmacie pour ces filtres
+                  </p>
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={resetAllFilters}
+                      className="mt-3 inline-flex h-9 items-center rounded-full bg-slate-100 px-4 text-xs font-semibold text-slate-800 hover:bg-slate-200"
+                    >
+                      Tout voir
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {nearbyPharmacies.map(
+                    ({ pharmacy, open, distanceKm, inStockItems, latestUpdate }) => {
+                      const isFav = favoritePharmacyIds.includes(pharmacy.id);
+                      const isExpanded = expandedPharmacyIds.includes(pharmacy.id);
+                      const isActive = activePharmacyId === pharmacy.id;
+
+                      return (
+                        <PharmacyRowShell
+                          key={pharmacy.id}
+                          pharmacyId={pharmacy.id}
+                          isActive={isActive}
+                          onHover={setHoveredPharmacyId}
+                          onSelect={setSelectedPharmacyId}
+                        >
+                          <PharmacyRowHeader
+                            pharmacy={pharmacy}
+                            open={open}
+                            distanceKm={distanceKm}
+                            isFav={isFav}
+                            onToggleFavorite={toggleFavoritePharmacy}
+                            rightTop={`${inStockItems.length} en stock`}
+                            rightTone="brand"
+                          />
+
+                          {pharmacy.onDuty && pharmacy.dutyNote ? (
+                            <p className="mt-1.5 text-xs font-medium text-brand-700">
+                              {pharmacy.dutyNote}
+                            </p>
+                          ) : null}
+
+                          {inStockItems.length > 0 ? (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleExpandedPharmacy(pharmacy.id);
+                                }}
+                                aria-expanded={isExpanded}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+                              >
+                                <span>
+                                  {isExpanded
+                                    ? "Masquer le stock"
+                                    : `Voir les médicaments (${inStockItems.length})`}
+                                </span>
+                                <IconChevronRight
+                                  className={cn(
+                                    "h-3.5 w-3.5 transition-transform",
+                                    isExpanded ? "-rotate-90" : "rotate-90",
+                                  )}
+                                />
+                              </button>
+
+                              {isExpanded ? (
+                                <ul className="scroll-thin mt-2 max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/70">
+                                  {inStockItems.map(({ medicine, stock }) => (
+                                    <li key={medicine.id}>
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setQuery(medicine.name);
+                                          addRecentSearch(medicine.name);
+                                        }}
+                                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition hover:bg-white"
+                                      >
+                                        <span className="truncate font-medium text-slate-800">
+                                          {medicine.name}
+                                        </span>
+                                        <span className="shrink-0 font-bold tabular-nums text-brand-700">
+                                          {fcfa(stock.price)}
+                                        </span>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          <PharmacyRowActions
+                            pharmacy={pharmacy}
+                            userLocation={userLocation}
+                            primaryDirections={open}
+                            waText="Bonjour, je vérifie la disponibilité de médicaments dans votre officine. (via Kéné)"
+                            timestampText={
+                              latestUpdate
+                                ? `Mis à jour ${timeAgo(latestUpdate)}`
+                                : "Horaires déclarés"
+                            }
+                          />
+                        </PharmacyRowShell>
+                      );
+                    },
+                  )}
+                </div>
               )}
-            </>
-          )}
+            </div>
+
+            <footer className="border-t border-slate-100 px-4 py-5 text-center text-xs text-slate-400">
+              Outil d&apos;information uniquement — aucune vente ni réservation
+              médicale.
+            </footer>
+          </section>
         </div>
 
+        {/* Desktop always-live Abidjan OpenStreetMap */}
         <aside
+          ref={mapSectionRef}
           aria-label="Carte interactive des pharmacies"
-          className="hidden lg:block sticky top-[92px] h-[calc(100vh-116px)] min-h-[480px] max-h-[780px]"
+          className="hidden lg:sticky lg:top-6 lg:block lg:h-[calc(100vh-48px)] lg:min-h-[560px]"
         >
-          <div className="h-full rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-card">
+          <div className="h-full rounded-[28px] border border-slate-200/80 bg-white p-1.5 shadow-soft">
             <PharmacyMap
               fillHeight
               markers={activeMarkers}
