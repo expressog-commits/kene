@@ -253,6 +253,21 @@ export const IconShare = (p: IconProps) => (
   </svg>
 );
 
+export const IconMic = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="9" y="3.5" width="6" height="10.5" rx="3" />
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" />
+  </svg>
+);
+
+export const IconSmartphone = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />
+    <path d="M12 7.5v6M9.5 11.5 12 14l2.5-2.5" />
+    <path d="M11 18h2" />
+  </svg>
+);
+
 export const IconLogo = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 32 32"

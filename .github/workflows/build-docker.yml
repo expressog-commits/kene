@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "kene/**"
+      - "kene-mobile/**"
       - ".github/workflows/build-docker.yml"
   workflow_dispatch:
 
@@ -19,6 +20,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install mobile dependencies and sync Capacitor
+        working-directory: kene-mobile
+        run: |
+          npm install --no-audit --no-fund
+          npx cap sync android
+
+      - name: Build Android APK for web download
+        working-directory: kene-mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          mkdir -p ../../kene/public
+          cp app/build/outputs/apk/debug/app-debug.apk ../../kene/public/kene-android.apk
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -32,7 +32,7 @@ jobs:
 
       - name: Install mobile dependencies and sync Capacitor
         run: |
-          npm install
+          npm install --no-audit --no-fund
           npx cap sync android
 
       - name: Build Debug APK

@@ -15,6 +15,7 @@ import {
   IconLogo,
   IconMap,
   IconMapPin,
+  IconMic,
   IconNavigation,
   IconPharmacy,
   IconPhone,
@@ -22,8 +23,8 @@ import {
   IconPlus,
   IconSearch,
   IconSettings,
+  IconSmartphone,
   IconStar,
-  IconUserCheck,
   IconWhatsApp,
 } from "../icons";
 import {
@@ -45,7 +46,56 @@ import type { Medicine, Pharmacy, StockItem, UserLocation } from "@/lib/types";
 type SearchMode = "single" | "list";
 type DisplayMode = "list" | "map";
 
+interface SpeechRecognitionResultAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  0: SpeechRecognitionResultAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  results: {
+    length: number;
+    [index: number]: SpeechRecognitionResultLike;
+  };
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error?: string;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+interface WindowWithSpeech extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 const MAX_LIST_ITEMS = 8;
+
+const HEALTH_CHIPS: Array<{ label: string; search: string }> = [
+  { label: "Paludisme", search: "Paludisme" },
+  { label: "Fièvre & douleur", search: "Douleur fièvre" },
+  { label: "Sirop enfant", search: "Sirop enfant" },
+  { label: "Paracétamol", search: "Paracétamol" },
+  { label: "Ventre & SRO", search: "Digestion" },
+  { label: "Toux & rhume", search: "Respiratoire" },
+  { label: "Grossesse & fer", search: "Grossesse" },
+  { label: "Tension & diabète", search: "Tension" },
+];
 
 const CARD_PATTERN = {
   backgroundColor: "#0EA58C",
@@ -127,7 +177,7 @@ function PharmacyRowHeader({
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <h3 className="truncate text-[15px] font-bold text-slate-900">
+          <h3 className="truncate text-base font-bold text-slate-900">
             {pharmacy.name}
           </h3>
           <button
@@ -143,7 +193,7 @@ function PharmacyRowHeader({
                 : `Ajouter ${pharmacy.name} aux favorites`
             }
             className={cn(
-              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
               isFav
                 ? "text-sun-500 hover:bg-sun-50"
                 : "text-slate-300 hover:bg-slate-100 hover:text-sun-500",
@@ -188,7 +238,7 @@ function PharmacyRowHeader({
       </div>
 
       <div className="shrink-0 text-right">
-        <p className={cn("text-[15px] font-extrabold tabular-nums", toneClass)}>
+        <p className={cn("text-base font-extrabold tabular-nums", toneClass)}>
           {rightTop}
         </p>
         {rightBottom ? (
@@ -222,21 +272,21 @@ function PharmacyRowActions({
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
         className={cn(
-          "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition active:scale-[0.98]",
+          "inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-bold transition active:scale-[0.98] sm:flex-none",
           primaryDirections
             ? "bg-brand-700 text-white hover:bg-brand-800"
             : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
         )}
       >
-        <IconNavigation className="h-3.5 w-3.5" />
+        <IconNavigation className="h-4 w-4 shrink-0" />
         Itinéraire
       </a>
       <a
         href={`tel:${pharmacy.phone.replace(/\s/g, "")}`}
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98]"
+        className="inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-bold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98] sm:flex-none"
       >
-        <IconPhone className="h-3.5 w-3.5" />
+        <IconPhone className="h-4 w-4 shrink-0" />
         Appeler
       </a>
       <a
@@ -244,12 +294,14 @@ function PharmacyRowActions({
         target="_blank"
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98]"
+        className="inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-emerald-50 px-3.5 text-[13px] font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98] sm:flex-none"
       >
-        <IconWhatsApp className="h-3.5 w-3.5" />
+        <IconWhatsApp className="h-4 w-4 shrink-0" />
         WhatsApp
       </a>
-      <span className="ml-auto text-[11px] text-slate-400">{timestampText}</span>
+      <span className="w-full text-[11px] text-slate-400 sm:ml-auto sm:w-auto">
+        {timestampText}
+      </span>
     </div>
   );
 }
@@ -312,6 +364,85 @@ export default function Search({
   const [expandedPharmacyIds, setExpandedPharmacyIds] = useState<string[]>([]);
   const [hoveredPharmacyId, setHoveredPharmacyId] = useState<string | null>(null);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [showInstallPanel, setShowInstallPanel] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const modeRef = useRef<SearchMode>(mode);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+    };
+  }, []);
+
+  const handleVoiceSearch = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const speechWindow =
+      typeof window !== "undefined" ? (window as WindowWithSpeech) : null;
+    const SpeechRec =
+      speechWindow?.SpeechRecognition ?? speechWindow?.webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      notify("La recherche vocale n'est pas disponible sur ce navigateur.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = "fr-FR";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript ?? "";
+        const cleaned = transcript.replace(/[.,;!?]+$/g, "").trim();
+        if (!cleaned) return;
+        if (modeRef.current === "single") {
+          setQuery(cleaned);
+          addRecentSearch(cleaned);
+        } else {
+          setListQuery(cleaned);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        setListening(false);
+        recognitionRef.current = null;
+        if (
+          event.error === "not-allowed" ||
+          event.error === "service-not-allowed"
+        ) {
+          notify("Autorisez le microphone pour utiliser la recherche vocale.");
+        } else if (event.error === "no-speech") {
+          notify("Aucune voix détectée. Réessayez.");
+        } else if (event.error !== "aborted") {
+          notify("Impossible de reconnaître la voix. Tapez votre recherche.");
+        }
+      };
+
+      recognition.onend = () => {
+        setListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      setListening(true);
+      recognition.start();
+    } catch {
+      setListening(false);
+      recognitionRef.current = null;
+      notify("La recherche vocale n'est pas disponible sur ce navigateur.");
+    }
+  };
 
   const visiblePharmacies = useMemo(() => publicPharmacies(state), [state]);
   const dutyCount = useMemo(
@@ -768,17 +899,6 @@ export default function Search({
                     Sync…
                   </span>
                 ) : null}
-                {canInstallPwa && onInstallPwa ? (
-                  <button
-                    type="button"
-                    onClick={onInstallPwa}
-                    aria-label="Installer l'application"
-                    className="inline-flex h-9 items-center gap-1 rounded-full bg-white/15 px-3 text-xs font-semibold text-white transition hover:bg-white/25"
-                  >
-                    <IconDownload className="h-3.5 w-3.5" />
-                    <span>Installer</span>
-                  </button>
-                ) : null}
               </div>
 
               <button
@@ -797,7 +917,7 @@ export default function Search({
                 ) : (
                   <>
                     <IconPharmacy className="h-3.5 w-3.5 shrink-0 text-brand-700" />
-                    <span>Compte</span>
+                    <span>Pharmacien</span>
                   </>
                 )}
               </button>
@@ -810,8 +930,7 @@ export default function Search({
                   : "Mon ordonnance"}
               </h1>
               <p className="mt-0.5 text-xs font-medium text-emerald-100/90 tabular-nums">
-                {visiblePharmacies.length} pharmacies vérifiées · {dutyCount} de
-                garde 24h/24
+                {visiblePharmacies.length} pharmacies · {dutyCount} de garde 24h/24
               </p>
             </div>
           </header>
@@ -829,7 +948,7 @@ export default function Search({
                     event.preventDefault();
                     if (query.trim()) addRecentSearch(query);
                   }}
-                  className="flex h-11 items-center gap-1.5 px-1.5"
+                  className="flex h-[52px] items-center gap-1.5 px-1.5"
                 >
                   <IconSearch className="h-5 w-5 shrink-0 text-brand-700" />
                   <input
@@ -847,8 +966,8 @@ export default function Search({
                       }
                       if (query.trim().length >= 2) addRecentSearch(query);
                     }}
-                    placeholder="Rechercher un médicament…"
-                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                    placeholder="Tapez ou dites un médicament…"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
                   />
                   {query ? (
                     <button
@@ -858,14 +977,33 @@ export default function Search({
                         inputRef.current?.focus();
                       }}
                       aria-label="Effacer la recherche"
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                     >
                       <IconClose className="h-4 w-4" />
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={handleVoiceSearch}
+                    aria-label="Rechercher à la voix"
+                    aria-pressed={listening}
+                    title={
+                      listening
+                        ? "Écoute en cours… touchez pour arrêter"
+                        : "Rechercher à la voix"
+                    }
+                    className={cn(
+                      "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-95",
+                      listening
+                        ? "animate-pulse bg-rose-100 text-rose-600 ring-2 ring-rose-300"
+                        : "bg-brand-50 text-brand-700 hover:bg-brand-100",
+                    )}
+                  >
+                    <IconMic className="h-5 w-5" />
+                  </button>
                 </form>
               ) : (
-                <div className="flex h-11 items-center gap-1.5 px-1.5">
+                <div className="flex h-[52px] items-center gap-1.5 px-1.5">
                   <IconSearch className="h-5 w-5 shrink-0 text-brand-700" />
                   <input
                     ref={listInputRef}
@@ -887,8 +1025,8 @@ export default function Search({
                         setListQuery("");
                       }
                     }}
-                    placeholder="Ajouter un médicament (2 à 8)…"
-                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                    placeholder="Ajouter un médicament…"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
                   />
                   {listQuery ? (
                     <button
@@ -898,22 +1036,41 @@ export default function Search({
                         listInputRef.current?.focus();
                       }}
                       aria-label="Effacer la saisie d'ordonnance"
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                     >
                       <IconClose className="h-4 w-4" />
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={handleVoiceSearch}
+                    aria-label="Rechercher à la voix"
+                    aria-pressed={listening}
+                    title={
+                      listening
+                        ? "Écoute en cours… touchez pour arrêter"
+                        : "Rechercher à la voix"
+                    }
+                    className={cn(
+                      "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-95",
+                      listening
+                        ? "animate-pulse bg-rose-100 text-rose-600 ring-2 ring-rose-300"
+                        : "bg-brand-50 text-brand-700 hover:bg-brand-100",
+                    )}
+                  >
+                    <IconMic className="h-5 w-5" />
+                  </button>
                 </div>
               )}
 
               <div className="mt-1 flex items-center justify-between gap-2 border-t border-slate-100 px-1.5 pt-1.5">
-                <label className="inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-slate-600">
-                  <IconMapPin className="h-3.5 w-3.5 shrink-0 text-brand-700" />
+                <label className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
+                  <IconMapPin className="h-4 w-4 shrink-0 text-brand-700" />
                   <select
                     aria-label="Commune"
                     value={quartier}
                     onChange={(event) => setQuartier(event.target.value)}
-                    className="max-w-[155px] truncate bg-transparent py-1 text-xs font-semibold text-slate-800 focus:outline-none"
+                    className="max-w-[180px] truncate bg-transparent py-1.5 text-[13px] font-semibold leading-snug text-slate-800 focus:outline-none"
                   >
                     {quartiers.map((item) => (
                       <option key={item} value={item}>
@@ -923,37 +1080,30 @@ export default function Search({
                   </select>
                 </label>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mode === "single") {
-                      setMode("list");
-                      requestAnimationFrame(() => listInputRef.current?.focus());
-                    } else {
+                {mode === "list" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
                       setMode("single");
                       requestAnimationFrame(() => inputRef.current?.focus());
-                    }
-                  }}
-                  className="shrink-0 text-xs font-bold text-brand-700 transition hover:text-brand-800"
-                >
-                  {mode === "single"
-                    ? selectedMedicineIds.length > 0
-                      ? `Ordonnance (${selectedMedicineIds.length})`
-                      : "+ Ordonnance"
-                    : "← Recherche simple"}
-                </button>
+                    }}
+                    className="shrink-0 py-1 text-xs font-bold text-brand-700 transition hover:text-brand-800"
+                  >
+                    ← Recherche simple
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <div className="mt-2 flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold text-white/90">
-                Gratuit · Temps réel
+            <div className="mt-2.5 flex items-center justify-between px-1">
+              <span className="text-[11px] font-semibold text-white/95">
+                Accès libre · Sans inscription
               </span>
               <IconLogo className="h-6 w-6 text-white/95" />
             </div>
           </section>
 
-          {/* 3. White Rounded Sheet: 2×4 Circular Pastel Icon Grid */}
+          {/* 3. White Rounded Sheet: Zero-Duplicate 2×4 Circular Pastel Icon Grid */}
           <section
             aria-label="Raccourcis rapides"
             className="-mt-4 rounded-t-[28px] bg-white px-4 pb-5 pt-8"
@@ -963,42 +1113,23 @@ export default function Search({
                 type="button"
                 onClick={() => setOnlyDuty((value) => !value)}
                 aria-pressed={onlyDuty}
-                className="group flex flex-col items-center gap-1.5 text-center"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
                 <span
                   className={cn(
-                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition group-active:scale-95",
+                    "relative flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition group-active:scale-95",
                     onlyDuty && "ring-2 ring-brand-700 ring-offset-2",
                   )}
                 >
-                  <IconClock className="h-5 w-5" />
+                  <IconClock className="h-6 w-6" />
                   {dutyCount > 0 ? (
                     <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-700 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
                       {dutyCount}
                     </span>
                   ) : null}
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                <span className="text-xs font-bold leading-tight text-slate-800">
                   De garde
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setOnlyOpen((value) => !value)}
-                aria-pressed={onlyOpen}
-                className="group flex flex-col items-center gap-1.5 text-center"
-              >
-                <span
-                  className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 transition group-active:scale-95",
-                    onlyOpen && "ring-2 ring-brand-700 ring-offset-2",
-                  )}
-                >
-                  <IconPharmacy className="h-5 w-5" />
-                </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
-                  Ouvertes
                 </span>
               </button>
 
@@ -1013,19 +1144,38 @@ export default function Search({
                   }
                 }}
                 aria-pressed={Boolean(userLocation)}
-                className="group flex flex-col items-center gap-1.5 text-center disabled:opacity-60"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center disabled:opacity-60"
               >
                 <span
                   className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-700 transition group-active:scale-95",
+                    "flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-sky-700 transition group-active:scale-95",
                     userLocation && "ring-2 ring-brand-700 ring-offset-2",
                     locationStatus === "locating" && "animate-pulse",
                   )}
                 >
-                  <IconCrosshair className="h-5 w-5" />
+                  <IconCrosshair className="h-6 w-6" />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
-                  {locationStatus === "locating" ? "GPS…" : "Proximité"}
+                <span className="text-xs font-bold leading-tight text-slate-800">
+                  {locationStatus === "locating" ? "GPS…" : "Autour de moi"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOnlyOpen((value) => !value)}
+                aria-pressed={onlyOpen}
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
+              >
+                <span
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 transition group-active:scale-95",
+                    onlyOpen && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconPharmacy className="h-6 w-6" />
+                </span>
+                <span className="text-xs font-bold leading-tight text-slate-800">
+                  Ouvertes
                 </span>
               </button>
 
@@ -1040,22 +1190,22 @@ export default function Search({
                   }
                 }}
                 aria-pressed={mode === "list"}
-                className="group flex flex-col items-center gap-1.5 text-center"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
                 <span
                   className={cn(
-                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-700 transition group-active:scale-95",
+                    "relative flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-violet-700 transition group-active:scale-95",
                     mode === "list" && "ring-2 ring-brand-700 ring-offset-2",
                   )}
                 >
-                  <IconList className="h-5 w-5" />
+                  <IconList className="h-6 w-6" />
                   {selectedMedicineIds.length > 0 ? (
                     <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-700 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
                       {selectedMedicineIds.length}
                     </span>
                   ) : null}
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                <span className="text-xs font-bold leading-tight text-slate-800">
                   Ordonnance
                 </span>
               </button>
@@ -1064,17 +1214,17 @@ export default function Search({
                 type="button"
                 onClick={handleToggleMapAction}
                 aria-pressed={display === "map"}
-                className="group flex flex-col items-center gap-1.5 text-center"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
                 <span
                   className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-teal-700 transition group-active:scale-95",
+                    "flex h-14 w-14 items-center justify-center rounded-full bg-teal-100 text-teal-700 transition group-active:scale-95",
                     display === "map" && "ring-2 ring-brand-700 ring-offset-2",
                   )}
                 >
-                  <IconMap className="h-5 w-5" />
+                  <IconMap className="h-6 w-6" />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                <span className="text-xs font-bold leading-tight text-slate-800">
                   Carte
                 </span>
               </button>
@@ -1091,62 +1241,141 @@ export default function Search({
                   setOnlyFavorites((value) => !value);
                 }}
                 aria-pressed={onlyFavorites}
-                className="group flex flex-col items-center gap-1.5 text-center"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
                 <span
                   className={cn(
-                    "relative flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-pink-600 transition group-active:scale-95",
+                    "relative flex h-14 w-14 items-center justify-center rounded-full bg-pink-100 text-pink-600 transition group-active:scale-95",
                     onlyFavorites && "ring-2 ring-brand-700 ring-offset-2",
                   )}
                 >
-                  <IconStar filled={onlyFavorites} className="h-5 w-5" />
+                  <IconStar filled={onlyFavorites} className="h-6 w-6" />
                   {favoritePharmacyIds.length > 0 ? (
                     <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
                       {favoritePharmacyIds.length}
                     </span>
                   ) : null}
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                <span className="text-xs font-bold leading-tight text-slate-800">
                   Favoris
                 </span>
               </button>
 
               <a
                 href="tel:185"
-                className="group flex flex-col items-center gap-1.5 text-center"
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 transition group-active:scale-95">
-                  <IconPhone className="h-5 w-5" />
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-rose-700 transition group-active:scale-95">
+                  <IconPhone className="h-6 w-6" />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
+                <span className="text-xs font-bold leading-tight text-slate-800">
                   SAMU 185
                 </span>
               </a>
 
               <button
                 type="button"
-                onClick={onOpenAccount}
-                className="group flex flex-col items-center gap-1.5 text-center"
+                onClick={() => setShowInstallPanel((prev) => !prev)}
+                aria-expanded={showInstallPanel}
+                className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
               >
-                <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 transition group-active:scale-95">
-                  <IconUserCheck className="h-5 w-5" />
-                  {accountLabel ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
-                    />
-                  ) : null}
+                <span
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 transition group-active:scale-95",
+                    showInstallPanel && "ring-2 ring-brand-700 ring-offset-2",
+                  )}
+                >
+                  <IconSmartphone className="h-6 w-6" />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-slate-800">
-                  Compte
+                <span className="text-xs font-bold leading-tight text-slate-800">
+                  Installer
                 </span>
               </button>
             </div>
 
-            {/* Single-row horizontal quick chips or prescription selection */}
+            {showInstallPanel ? (
+              <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      Installer Kéné sur votre téléphone
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-600">
+                      Accès rapide même avec une faible connexion.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowInstallPanel(false)}
+                    aria-label="Fermer le panneau d'installation"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-slate-800"
+                  >
+                    <IconClose className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  <a
+                    href="/kene-android.apk"
+                    download
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+                  >
+                    <IconSmartphone className="h-5 w-5 shrink-0" />
+                    <span>Télécharger pour Android (.apk)</span>
+                  </a>
+
+                  {canInstallPwa && onInstallPwa ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onInstallPwa();
+                        setShowInstallPanel(false);
+                      }}
+                      className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 active:scale-[0.98]"
+                    >
+                      <IconDownload className="h-4 w-4 shrink-0" />
+                      <span>Ajouter à l&apos;écran d&apos;accueil</span>
+                    </button>
+                  ) : (
+                    <p className="text-center text-[11px] text-slate-500">
+                      Sur iPhone (Safari) : bouton Partager → Sur l&apos;écran d&apos;accueil.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Single-row horizontal everyday health chips or prescription selection */}
             {mode === "single" ? (
-              <div className="mt-5">
-                {hasSingleQuery && suggestions.length > 0 ? (
+              !hasSingleQuery ? (
+                <div className="mt-5">
+                  <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+                    {HEALTH_CHIPS.map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() => {
+                          setQuery(chip.search);
+                          addRecentSearch(chip.search);
+                        }}
+                        className="inline-flex h-[38px] shrink-0 items-center rounded-full bg-slate-100 px-3.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-200 active:scale-[0.98]"
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                    {recentSearches.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={clearRecentSearches}
+                        className="inline-flex h-[38px] shrink-0 items-center px-2.5 text-xs font-medium text-slate-400 hover:text-slate-700"
+                      >
+                        Effacer hist.
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : suggestions.length > 0 ? (
+                <div className="mt-5">
                   <div
                     onMouseDown={() => {
                       suppressBlurRef.current = true;
@@ -1161,44 +1390,14 @@ export default function Search({
                           setQuery(medicine.name);
                           addRecentSearch(medicine.name);
                         }}
-                        className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+                        className="inline-flex h-[38px] shrink-0 items-center rounded-full border border-brand-200 bg-brand-50 px-3.5 text-[13px] font-semibold text-brand-800 transition hover:bg-brand-100"
                       >
                         {medicine.name}
                       </button>
                     ))}
                   </div>
-                ) : (
-                  <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
-                    {popular.slice(0, 6).map((medicine) => (
-                      <button
-                        key={medicine.id}
-                        type="button"
-                        onClick={() => {
-                          setQuery(medicine.name);
-                          addRecentSearch(medicine.name);
-                        }}
-                        className={cn(
-                          "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                          query.trim().toLowerCase() === medicine.name.toLowerCase()
-                            ? "bg-brand-700 text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-                        )}
-                      >
-                        {medicine.name}
-                      </button>
-                    ))}
-                    {recentSearches.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={clearRecentSearches}
-                        className="shrink-0 px-2 text-[11px] font-medium text-slate-400 hover:text-slate-700"
-                      >
-                        Effacer hist.
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : null
             ) : (
               <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
                 {selectedMedicines.length > 0 ? (
@@ -1208,7 +1407,7 @@ export default function Search({
                         key={medicine.id}
                         type="button"
                         onClick={() => removeMedicineFromList(medicine.id)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800"
                       >
                         <span>{medicine.name}</span>
                         <IconClose className="h-3.5 w-3.5" />
@@ -1217,19 +1416,23 @@ export default function Search({
                     <button
                       type="button"
                       onClick={copySelectedList}
-                      className="inline-flex h-8 items-center rounded-full border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      className="inline-flex h-9 items-center rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                     >
                       Copier
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedMedicineIds([])}
-                      className="inline-flex h-8 items-center rounded-full px-2 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                      className="inline-flex h-9 items-center rounded-full px-2.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
                     >
                       Vider
                     </button>
                   </div>
                 ) : null}
+
+                <p className="text-xs font-medium text-slate-600">
+                  Touchez les médicaments de votre ordonnance (jusqu&apos;à 8) :
+                </p>
 
                 <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
                   {listSuggestions.map((medicine) => {
@@ -1244,7 +1447,7 @@ export default function Search({
                           setListQuery("");
                         }}
                         className={cn(
-                          "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                          "inline-flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition",
                           added
                             ? "bg-emerald-50 text-emerald-700"
                             : "bg-slate-100 text-slate-700 hover:bg-slate-200",
@@ -1391,7 +1594,7 @@ export default function Search({
                             }
                           />
 
-                          <ul className="mt-2.5 space-y-1 rounded-xl bg-slate-50/90 p-2.5 text-xs">
+                          <ul className="mt-2.5 space-y-1.5 rounded-xl bg-slate-50/90 p-3 text-[13px]">
                             {items.map((entry) => (
                               <li
                                 key={entry.medicine.id}
@@ -1479,7 +1682,7 @@ export default function Search({
                             }
                           />
 
-                          <p className="mt-1.5 text-xs font-medium text-slate-700">
+                          <p className="mt-2 text-sm font-semibold text-slate-800">
                             {medicine.name}{" "}
                             <span className="font-normal text-slate-500">
                               · {medicine.form}
@@ -1560,7 +1763,7 @@ export default function Search({
                                   toggleExpandedPharmacy(pharmacy.id);
                                 }}
                                 aria-expanded={isExpanded}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+                                className="inline-flex min-h-[36px] items-center gap-1 py-1 text-[13px] font-semibold text-brand-700 hover:text-brand-800"
                               >
                                 <span>
                                   {isExpanded
@@ -1586,7 +1789,7 @@ export default function Search({
                                           setQuery(medicine.name);
                                           addRecentSearch(medicine.name);
                                         }}
-                                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition hover:bg-white"
+                                        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-[13px] transition hover:bg-white"
                                       >
                                         <span className="truncate font-medium text-slate-800">
                                           {medicine.name}

@@ -96,16 +96,22 @@ export default function Workspace() {
     setInitialOnlyDuty(false);
 
     if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
+      const prevHref = window.location.href;
+      const url = new URL(prevHref);
       url.searchParams.delete("q");
       if (target === "home") {
         url.searchParams.delete("view");
-      } else if (target === "account") {
-        url.searchParams.set("view", "pharmacy");
+        if (url.toString() !== prevHref) {
+          window.history.replaceState(null, "", url.toString());
+        }
       } else {
-        url.searchParams.set("view", target);
+        url.searchParams.set("view", target === "account" ? "pharmacy" : target);
+        if (url.toString() !== prevHref) {
+          window.history.pushState({ space: target }, "", url.toString());
+        } else {
+          window.history.replaceState({ space: target }, "", url.toString());
+        }
       }
-      window.history.replaceState(null, "", url.toString());
     }
   }, []);
 

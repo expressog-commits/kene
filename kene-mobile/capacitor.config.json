@@ -3,8 +3,9 @@
   "appName": "Kéné",
   "webDir": "www",
   "server": {
-    "url": "https://kene-web-production.up.railway.app/app",
+    "url": "https://kene-web-production.up.railway.app",
     "cleartext": false,
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "errorPath": "index.html"
   }
 }

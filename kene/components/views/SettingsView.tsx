@@ -14,6 +14,7 @@ import {
   IconPhone,
   IconShare,
   IconShield,
+  IconSmartphone,
   IconTrash,
 } from "../icons";
 
@@ -270,19 +271,19 @@ export default function SettingsView({
               Partager
             </h2>
             <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <button
-                type="button"
-                onClick={() => void handleShare()}
+              <a
+                href="/kene-android.apk"
+                download
                 className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
               >
                 <span className="flex items-center gap-3.5">
-                  <IconShare className="h-5 w-5 shrink-0 text-slate-900" />
+                  <IconSmartphone className="h-5 w-5 shrink-0 text-slate-900" />
                   <span className="text-[15px] font-medium text-slate-900">
-                    Inviter un proche à utiliser Kéné
+                    Télécharger pour Android (.apk)
                   </span>
                 </span>
                 <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-              </button>
+              </a>
 
               <div>
                 <button
@@ -312,6 +313,20 @@ export default function SettingsView({
                   </p>
                 ) : null}
               </div>
+
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50"
+              >
+                <span className="flex items-center gap-3.5">
+                  <IconShare className="h-5 w-5 shrink-0 text-slate-900" />
+                  <span className="text-[15px] font-medium text-slate-900">
+                    Inviter un proche à utiliser Kéné
+                  </span>
+                </span>
+                <IconChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
             </div>
           </section>
 
