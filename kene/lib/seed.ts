@@ -153,11 +153,11 @@ const PHARMACIES: Pharmacy[] = [
   },
 ];
 
-const MEDICINES: Medicine[] = [
+export const MEDICINES: Medicine[] = [
   {
     id: "med_paracetamol",
     name: "Paracétamol 500 mg",
-    dci: "Paracétamol",
+    dci: "Paracétamol · Doliprane · Efferalgan",
     form: "Boîte de 20 comprimés",
     category: "Douleur & fièvre",
     basePrice: 700,
@@ -165,7 +165,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_amoxicilline",
     name: "Amoxicilline 500 mg",
-    dci: "Amoxicilline",
+    dci: "Amoxicilline · Clamoxyl",
     form: "Boîte de 12 gélules",
     category: "Antibiotiques",
     basePrice: 2500,
@@ -173,7 +173,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_act",
     name: "Artéméther-Luméfantrine 20/120",
-    dci: "Artéméther + Luméfantrine",
+    dci: "Artéméther + Luméfantrine · Coartem",
     form: "Boîte de 6 comprimés",
     category: "Paludisme",
     basePrice: 3500,
@@ -181,7 +181,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_sro",
     name: "Sérum de réhydratation (SRO)",
-    dci: "Sels de réhydratation orale",
+    dci: "Sels de réhydratation orale · Orasel",
     form: "Sachet",
     category: "Digestion",
     basePrice: 500,
@@ -189,7 +189,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_ibuprofene",
     name: "Ibuprofène 400 mg",
-    dci: "Ibuprofène",
+    dci: "Ibuprofène · Advil · Nurofen",
     form: "Boîte de 20 comprimés",
     category: "Douleur & fièvre",
     basePrice: 1000,
@@ -197,7 +197,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_metronidazole",
     name: "Métronidazole 500 mg",
-    dci: "Métronidazole",
+    dci: "Métronidazole · Flagyl",
     form: "Boîte de 10 comprimés",
     category: "Antibiotiques",
     basePrice: 1500,
@@ -205,7 +205,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_amlodipine",
     name: "Amlodipine 5 mg",
-    dci: "Amlodipine",
+    dci: "Amlodipine · Amlor",
     form: "Boîte de 30 comprimés",
     category: "Tension & diabète",
     basePrice: 2000,
@@ -213,7 +213,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_metformine",
     name: "Metformine 500 mg",
-    dci: "Metformine",
+    dci: "Metformine · Glucophage",
     form: "Boîte de 30 comprimés",
     category: "Tension & diabète",
     basePrice: 2500,
@@ -221,7 +221,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_salbutamol",
     name: "Salbutamol inhalateur",
-    dci: "Salbutamol",
+    dci: "Salbutamol · Ventoline",
     form: "Inhalateur 100 µg",
     category: "Respiratoire",
     basePrice: 6500,
@@ -229,7 +229,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_fer",
     name: "Fer + acide folique",
-    dci: "Sulfate ferreux + acide folique",
+    dci: "Sulfate ferreux + acide folique · Tardyferon · Foldine",
     form: "Boîte de 30 comprimés",
     category: "Grossesse & fer",
     basePrice: 1800,
@@ -237,7 +237,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_omeprazole",
     name: "Oméprazole 20 mg",
-    dci: "Oméprazole",
+    dci: "Oméprazole · Mopral",
     form: "Boîte de 14 gélules",
     category: "Digestion",
     basePrice: 3000,
@@ -245,7 +245,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_test_palu",
     name: "Test rapide paludisme",
-    dci: "TDR paludisme",
+    dci: "TDR paludisme · Autotest palu",
     form: "Test unitaire",
     category: "Paludisme",
     basePrice: 2000,
@@ -253,7 +253,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_cipro",
     name: "Ciprofloxacine 500 mg",
-    dci: "Ciprofloxacine",
+    dci: "Ciprofloxacine · Ciflox",
     form: "Boîte de 10 comprimés",
     category: "Antibiotiques",
     basePrice: 2800,
@@ -261,7 +261,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_paracetamol_siro",
     name: "Paracétamol sirop enfant",
-    dci: "Paracétamol",
+    dci: "Paracétamol · Doliprane pédiatrique · Efferalgan",
     form: "Flacon 100 ml",
     category: "Douleur & fièvre",
     basePrice: 1500,
@@ -269,7 +269,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_chlorhexidine",
     name: "Chlorhexidine 0,05 %",
-    dci: "Chlorhexidine",
+    dci: "Chlorhexidine · Biseptine · Cytéal",
     form: "Flacon 500 ml",
     category: "Hygiène",
     basePrice: 1200,
@@ -277,7 +277,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_azithro",
     name: "Azithromycine 500 mg",
-    dci: "Azithromycine",
+    dci: "Azithromycine · Zithromax",
     form: "Boîte de 3 comprimés",
     category: "Antibiotiques",
     basePrice: 4500,
@@ -285,7 +285,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_cetirizine",
     name: "Cétirizine 10 mg",
-    dci: "Cétirizine",
+    dci: "Cétirizine · Zyrtec",
     form: "Boîte de 10 comprimés",
     category: "Respiratoire",
     basePrice: 1500,
@@ -293,7 +293,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_phloroglucinol",
     name: "Phloroglucinol 80 mg",
-    dci: "Phloroglucinol",
+    dci: "Phloroglucinol · Spasfon",
     form: "Boîte de 10 comprimés",
     category: "Digestion",
     basePrice: 1800,
@@ -301,7 +301,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_vitc",
     name: "Vitamine C 500 mg",
-    dci: "Acide ascorbique",
+    dci: "Acide ascorbique · Laroscorbine",
     form: "Boîte de 20 comprimés",
     category: "Douleur & fièvre",
     basePrice: 1200,
@@ -309,7 +309,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_asaq",
     name: "Artésunate-Amodiaquine 100/270",
-    dci: "Artésunate + Amodiaquine",
+    dci: "Artésunate + Amodiaquine · Camoquin",
     form: "Boîte de 6 comprimés",
     category: "Paludisme",
     basePrice: 2500,
@@ -317,7 +317,7 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_serum_phy",
     name: "Sérum physiologique 0,9 %",
-    dci: "Chlorure de sodium",
+    dci: "Chlorure de sodium · Physiodose",
     form: "Boîte de 20 dosettes",
     category: "Hygiène",
     basePrice: 1600,
@@ -325,12 +325,132 @@ const MEDICINES: Medicine[] = [
   {
     id: "med_povidone",
     name: "Povidone iodée 10 %",
-    dci: "Povidone iodée",
+    dci: "Povidone iodée · Bétadine",
     form: "Flacon 125 ml",
     category: "Hygiène",
     basePrice: 2200,
   },
 ];
+
+export const PRODUCTION_EXTRA_PHARMACIES: Pharmacy[] = [
+  {
+    id: "ph_koumassi_soleil",
+    name: "Pharmacie du Soleil Koumassi",
+    quartier: "Koumassi",
+    address: "Boulevard du 7 Décembre, près du Grand Carrefour",
+    phone: "+225 27 21 36 14 80",
+    whatsapp: "+225 07 48 36 14 80",
+    distanceKm: 8.9,
+    latitude: 5.2934,
+    longitude: -3.9548,
+    openFrom: 8,
+    openTo: 21,
+    onDuty: false,
+    dutyNote: "",
+    verificationStatus: "verified",
+    licenseNumber: "CI-ONP-2022-0784",
+    verifiedAt: "2026-02-15T09:00:00.000Z",
+  },
+  {
+    id: "ph_portbouet_phare",
+    name: "Pharmacie de l'Océan Port-Bouët",
+    quartier: "Port-Bouët",
+    address: "Route de l'Aéroport, Gonzagueville",
+    phone: "+225 27 21 27 84 50",
+    whatsapp: "+225 07 59 27 84 50",
+    distanceKm: 13.6,
+    latitude: 5.2572,
+    longitude: -3.9301,
+    openFrom: 0,
+    openTo: 24,
+    onDuty: true,
+    dutyNote: "Garde permanente 24h/24 · Secteur Aéroport",
+    verificationStatus: "verified",
+    licenseNumber: "CI-ONP-2021-0539",
+    verifiedAt: "2026-02-18T09:00:00.000Z",
+  },
+  {
+    id: "ph_bingerville_centre",
+    name: "Pharmacie Centrale de Bingerville",
+    quartier: "Bingerville",
+    address: "Boulevard Gbagba, centre-ville",
+    phone: "+225 27 22 40 31 15",
+    whatsapp: "+225 05 74 40 31 15",
+    distanceKm: 13.5,
+    latitude: 5.3558,
+    longitude: -3.8906,
+    openFrom: 8,
+    openTo: 20,
+    onDuty: false,
+    dutyNote: "",
+    verificationStatus: "verified",
+    licenseNumber: "CI-ONP-2023-0691",
+    verifiedAt: "2026-02-22T09:00:00.000Z",
+  },
+  {
+    id: "ph_cocody_palmeraie",
+    name: "Pharmacie Riviera Palmeraie",
+    quartier: "Cocody",
+    address: "Rond-point Saint-Viateur, Riviera Palmeraie",
+    phone: "+225 27 22 49 72 60",
+    whatsapp: "+225 07 08 49 72 60",
+    distanceKm: 6.7,
+    latitude: 5.3712,
+    longitude: -3.9564,
+    openFrom: 8,
+    openTo: 22,
+    onDuty: false,
+    dutyNote: "",
+    verificationStatus: "verified",
+    licenseNumber: "CI-ONP-2020-0418",
+    verifiedAt: "2026-02-25T09:00:00.000Z",
+  },
+  {
+    id: "ph_marcory_garde",
+    name: "Pharmacie des Lagunes Zone 4",
+    quartier: "Marcory",
+    address: "Rue Pierre et Marie Curie, Zone 4C",
+    phone: "+225 27 21 35 92 10",
+    whatsapp: "+225 05 05 35 92 10",
+    distanceKm: 7.5,
+    latitude: 5.2915,
+    longitude: -3.9762,
+    openFrom: 0,
+    openTo: 24,
+    onDuty: true,
+    dutyNote: "De garde 24h/24 · Sud Abidjan",
+    verificationStatus: "verified",
+    licenseNumber: "CI-ONP-2021-0625",
+    verifiedAt: "2026-03-01T09:00:00.000Z",
+  },
+];
+
+export function buildProductionExtraStock(now: number = Date.now()): StockItem[] {
+  const stock: StockItem[] = [];
+  PRODUCTION_EXTRA_PHARMACIES.forEach((pharmacy, pIndex) => {
+    const extraTarget = 11 + (pIndex % 3); // + 4 essentials = 15..17 items per pharmacy
+    MEDICINES.forEach((medicine, mIndex) => {
+      const isCoreEssential = mIndex < 4;
+      const includeExtra =
+        mIndex >= 4 && ((mIndex - 4 + pIndex * 5) % 18) < extraTarget;
+      if (!isCoreEssential && !includeExtra) return;
+
+      const seed = hash(`${pharmacy.id}:${medicine.id}`);
+      const quantity = isCoreEssential ? 12 + (seed % 28) : 3 + (seed % 34);
+      const price =
+        Math.round((medicine.basePrice * (92 + (seed % 17))) / 100 / 50) * 50;
+
+      stock.push({
+        pharmacyId: pharmacy.id,
+        medicineId: medicine.id,
+        price,
+        quantity,
+        updatedAt: new Date(now - ((seed % 7) + 1) * 1800_000).toISOString(),
+      });
+    });
+  });
+  return stock;
+}
 
 function buildHospitals(now: number): Hospital[] {
   return [

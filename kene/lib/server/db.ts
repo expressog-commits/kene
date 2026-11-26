@@ -1,5 +1,11 @@
 import { FEATURES } from "@/lib/features";
-import { DEMO_ACCOUNTS, seedState } from "@/lib/seed";
+import {
+  buildProductionExtraStock,
+  DEMO_ACCOUNTS,
+  MEDICINES,
+  PRODUCTION_EXTRA_PHARMACIES,
+  seedState,
+} from "@/lib/seed";
 import type {
   ActivityItem,
   AppState,
@@ -44,6 +50,8 @@ export interface OutboxItem {
 
 const shared = globalThis as typeof globalThis & {
   __keneSeedPromise?: Promise<void>;
+  __keneCatalogPromise?: Promise<void>;
+  __keneCatalogSynced?: boolean;
 };
 
 function buildSeedAccounts() {
@@ -176,6 +184,115 @@ export async function resetDatabase(): Promise<void> {
       data: accounts,
     });
   });
+
+  shared.__keneCatalogSynced = false;
+}
+
+export async function ensureProductionCatalog(): Promise<void> {
+  if (shared.__keneCatalogSynced) {
+    return;
+  }
+  if (shared.__keneCatalogPromise) {
+    return shared.__keneCatalogPromise;
+  }
+
+  const run = (async () => {
+    const isPostgres = (process.env.DATABASE_URL ?? "").startsWith("postgres");
+    const now = Date.now();
+
+    for (const medicine of MEDICINES) {
+      await prisma.medicine.upsert({
+        where: { id: medicine.id },
+        update: { dci: medicine.dci },
+        create: {
+          id: medicine.id,
+          name: medicine.name,
+          dci: medicine.dci,
+          form: medicine.form,
+          category: medicine.category,
+          basePrice: medicine.basePrice,
+        },
+      });
+    }
+
+    const extraIds = PRODUCTION_EXTRA_PHARMACIES.map((pharmacy) => pharmacy.id);
+    const existingPharmacies = await prisma.pharmacy.findMany({
+      where: { id: { in: extraIds } },
+      select: { id: true },
+    });
+    const existingPharmacySet = new Set(existingPharmacies.map((row) => row.id));
+
+    const missingPharmacies = PRODUCTION_EXTRA_PHARMACIES.filter(
+      (pharmacy) => !existingPharmacySet.has(pharmacy.id),
+    ).map((pharmacy, index) => ({
+      id: pharmacy.id,
+      name: pharmacy.name,
+      quartier: pharmacy.quartier,
+      address: pharmacy.address,
+      phone: pharmacy.phone,
+      whatsapp: pharmacy.whatsapp,
+      distanceKm: pharmacy.distanceKm,
+      latitude: pharmacy.latitude,
+      longitude: pharmacy.longitude,
+      openFrom: pharmacy.openFrom,
+      openTo: pharmacy.openTo,
+      onDuty: pharmacy.onDuty,
+      dutyNote: pharmacy.dutyNote,
+      verificationStatus: pharmacy.verificationStatus,
+      licenseNumber: pharmacy.licenseNumber,
+      verifiedAt: pharmacy.verifiedAt ? new Date(pharmacy.verifiedAt) : null,
+      updatedAt: pharmacy.updatedAt
+        ? new Date(pharmacy.updatedAt)
+        : new Date(now - (index + 1) * 30 * 60_000),
+    }));
+
+    if (missingPharmacies.length > 0) {
+      const pharmacyCreateArgs = (
+        isPostgres
+          ? { data: missingPharmacies, skipDuplicates: true }
+          : { data: missingPharmacies }
+      ) as Parameters<typeof prisma.pharmacy.createMany>[0];
+      await prisma.pharmacy.createMany(pharmacyCreateArgs);
+    }
+
+    const extraStock = buildProductionExtraStock(now);
+    const existingStock = await prisma.stockItem.findMany({
+      where: { pharmacyId: { in: extraIds } },
+      select: { pharmacyId: true, medicineId: true },
+    });
+    const existingStockKeys = new Set(
+      existingStock.map((item) => `${item.pharmacyId}:${item.medicineId}`),
+    );
+    const missingStock = extraStock
+      .filter(
+        (item) => !existingStockKeys.has(`${item.pharmacyId}:${item.medicineId}`),
+      )
+      .map((item) => ({
+        pharmacyId: item.pharmacyId,
+        medicineId: item.medicineId,
+        price: item.price,
+        quantity: item.quantity,
+        updatedAt: new Date(item.updatedAt),
+      }));
+
+    if (missingStock.length > 0) {
+      const stockCreateArgs = (
+        isPostgres
+          ? { data: missingStock, skipDuplicates: true }
+          : { data: missingStock }
+      ) as Parameters<typeof prisma.stockItem.createMany>[0];
+      await prisma.stockItem.createMany(stockCreateArgs);
+    }
+
+    shared.__keneCatalogSynced = true;
+  })();
+
+  shared.__keneCatalogPromise = run;
+  try {
+    await run;
+  } finally {
+    shared.__keneCatalogPromise = undefined;
+  }
 }
 
 export async function ensureSeeded(): Promise<void> {
@@ -191,6 +308,7 @@ export async function ensureSeeded(): Promise<void> {
     if (!setting || pharmacyCount === 0) {
       await resetDatabase();
     }
+    await ensureProductionCatalog();
   })();
 
   shared.__keneSeedPromise = run;

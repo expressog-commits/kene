@@ -23,6 +23,7 @@ import {
   IconPlus,
   IconSearch,
   IconSettings,
+  IconShare,
   IconSmartphone,
   IconStar,
   IconWhatsApp,
@@ -256,23 +257,61 @@ function PharmacyRowActions({
   userLocation,
   primaryDirections = true,
   waText,
+  shareDetail,
+  onNotify,
   timestampText,
 }: {
   pharmacy: Pharmacy;
   userLocation: UserLocation | null;
   primaryDirections?: boolean;
   waText: string;
+  shareDetail?: string;
+  onNotify: (message: string) => void;
   timestampText: string;
 }) {
+  const mapsUrl = mapsDirectionsLink(pharmacy, userLocation);
+
+  const handleShare = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const summary = shareDetail
+      ? `${pharmacy.name} (${pharmacy.quartier}) · ${shareDetail} — ${mapsUrl}`
+      : `${pharmacy.name} (${pharmacy.quartier}) — ${mapsUrl}`;
+
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `${pharmacy.name} · Kéné`,
+          text: summary,
+        });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summary);
+        onNotify("Infos pharmacie copiées !");
+      } else {
+        onNotify("Partage indisponible sur ce navigateur.");
+      }
+    } catch {
+      onNotify("Copie impossible sur ce navigateur.");
+    }
+  };
+
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <a
-        href={mapsDirectionsLink(pharmacy, userLocation)}
+        href={mapsUrl}
         target="_blank"
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
         className={cn(
-          "inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-bold transition active:scale-[0.98] sm:flex-none",
+          "inline-flex h-11 min-h-[44px] min-w-[96px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-[13px] font-bold transition active:scale-[0.98] sm:min-w-0 sm:flex-none",
           primaryDirections
             ? "bg-brand-700 text-white hover:bg-brand-800"
             : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
@@ -284,7 +323,7 @@ function PharmacyRowActions({
       <a
         href={`tel:${pharmacy.phone.replace(/\s/g, "")}`}
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-bold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98] sm:flex-none"
+        className="inline-flex h-11 min-h-[44px] min-w-[96px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-bold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98] sm:min-w-0 sm:flex-none"
       >
         <IconPhone className="h-4 w-4 shrink-0" />
         Appeler
@@ -294,12 +333,21 @@ function PharmacyRowActions({
         target="_blank"
         rel="noreferrer"
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex h-11 min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-emerald-50 px-3.5 text-[13px] font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98] sm:flex-none"
+        className="inline-flex h-11 min-h-[44px] min-w-[96px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-emerald-50 px-3 text-[13px] font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98] sm:min-w-0 sm:flex-none"
       >
         <IconWhatsApp className="h-4 w-4 shrink-0" />
         WhatsApp
       </a>
-      <span className="w-full text-[11px] text-slate-400 sm:ml-auto sm:w-auto">
+      <button
+        type="button"
+        onClick={(event) => void handleShare(event)}
+        aria-label={`Partager ${pharmacy.name}`}
+        className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-[0.98] sm:h-11 sm:min-h-[44px] sm:bg-white sm:text-[13px]"
+      >
+        <IconShare className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+        Partager
+      </button>
+      <span className="ml-auto text-[11px] text-slate-400">
         {timestampText}
       </span>
     </div>
@@ -491,6 +539,7 @@ export default function Search({
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyDuty, setOnlyDuty] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [sortBy, setSortBy] = useState<"distance" | "price">("distance");
 
   useEffect(() => {
     if (!initialOnlyDuty) return;
@@ -538,9 +587,9 @@ export default function Search({
       onlyOpen,
       onlyDuty,
       onlyInStock: false,
-      sort: "distance",
+      sort: sortBy,
     }),
-    [quartier, onlyOpen, onlyDuty],
+    [quartier, onlyOpen, onlyDuty, sortBy],
   );
 
   const hasActiveFilters =
@@ -557,6 +606,7 @@ export default function Search({
     setOnlyDuty(false);
     setOnlyOpen(false);
     setOnlyFavorites(false);
+    setSortBy("distance");
     setSelectedPharmacyId(null);
     setHoveredPharmacyId(null);
     if (userLocation) clearLocation();
@@ -966,7 +1016,7 @@ export default function Search({
                       }
                       if (query.trim().length >= 2) addRecentSearch(query);
                     }}
-                    placeholder="Tapez ou dites un médicament…"
+                    placeholder="Nom du médicament…"
                     className="min-w-0 flex-1 bg-transparent px-1.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
                   />
                   {query ? (
@@ -1473,7 +1523,7 @@ export default function Search({
           {/* 5. Clean Divided Pharmacy / Medicine List */}
           <section aria-label="Résultats" className="bg-white">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3.5 sm:px-5">
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-sm font-bold text-slate-900">{feedTitle}</h2>
                 {onlyDuty ? (
                   <p className="mt-0.5 text-xs font-medium text-brand-700">
@@ -1482,7 +1532,42 @@ export default function Search({
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {(mode === "single" && hasSingleQuery) ||
+                (mode === "list" && selectedMedicineIds.length > 0) ? (
+                  <div
+                    role="group"
+                    aria-label="Trier les pharmacies"
+                    className="inline-flex items-center rounded-full bg-slate-100 p-0.5"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSortBy("distance")}
+                      aria-pressed={sortBy === "distance"}
+                      className={cn(
+                        "inline-flex h-7 items-center rounded-full px-2.5 text-xs font-semibold transition",
+                        sortBy === "distance"
+                          ? "bg-white text-brand-800 shadow-sm"
+                          : "text-slate-600 hover:text-slate-900",
+                      )}
+                    >
+                      Plus proche
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortBy("price")}
+                      aria-pressed={sortBy === "price"}
+                      className={cn(
+                        "inline-flex h-7 items-center rounded-full px-2.5 text-xs font-semibold transition",
+                        sortBy === "price"
+                          ? "bg-white text-brand-800 shadow-sm"
+                          : "text-slate-600 hover:text-slate-900",
+                      )}
+                    >
+                      Moins cher
+                    </button>
+                  </div>
+                ) : null}
                 {hasActiveFilters ? (
                   <button
                     type="button"
@@ -1617,6 +1702,12 @@ export default function Search({
                             userLocation={userLocation}
                             primaryDirections={availableCount > 0}
                             waText={`Bonjour, avez-vous ces médicaments disponibles actuellement (vu sur Kéné) ?\n${listSummary}`}
+                            shareDetail={
+                              availableCount > 0
+                                ? `Ordonnance ${availableCount}/${totalRequested} dispo (${fcfa(result.estimatedTotal)})`
+                                : undefined
+                            }
+                            onNotify={notify}
                             timestampText={
                               result.latestUpdate
                                 ? `${distanceLabel(distanceKm)} · ${timeAgo(result.latestUpdate)}`
@@ -1700,6 +1791,8 @@ export default function Search({
                             userLocation={userLocation}
                             primaryDirections={level !== "out"}
                             waText={`Bonjour, avez-vous actuellement ${medicine.name} (${medicine.form}) en stock ? (vu sur Kéné)`}
+                            shareDetail={`${medicine.name} — ${fcfa(stock.price)}`}
+                            onNotify={notify}
                             timestampText={`Déclaré ${timeAgo(stock.updatedAt)}`}
                           />
                         </PharmacyRowShell>
@@ -1810,6 +1903,7 @@ export default function Search({
                             userLocation={userLocation}
                             primaryDirections={open}
                             waText="Bonjour, je vérifie la disponibilité de médicaments dans votre officine. (via Kéné)"
+                            onNotify={notify}
                             timestampText={
                               latestUpdate
                                 ? `Mis à jour ${timeAgo(latestUpdate)}`
@@ -1831,7 +1925,7 @@ export default function Search({
           </section>
         </div>
 
-        {/* Desktop always-live Abidjan OpenStreetMap */}
+        {/* Desktop always-live Abidjan Google Maps */}
         <aside
           ref={mapSectionRef}
           aria-label="Carte interactive des pharmacies"

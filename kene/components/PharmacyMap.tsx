@@ -1,13 +1,16 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef } from "react";
+import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type LType from "leaflet";
 import { openingLabel } from "@/lib/engine";
 import { distanceLabel, waLink } from "@/lib/format";
 import { ABIDJAN_CENTER, mapsDirectionsLink } from "@/lib/geo";
 import type { Pharmacy, UserLocation } from "@/lib/types";
 import { cn } from "./ui";
+
+type MapStyle = "roadmap" | "hybrid" | "embed";
+type TileMapStyle = "roadmap" | "hybrid";
 
 export interface PharmacyMapMarker {
   pharmacy: Pharmacy;
@@ -171,6 +174,134 @@ function MapLegend({
   );
 }
 
+function applyMapBounds(map: LType.Map, bounds: LType.LatLngTuple[]) {
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 14);
+  } else if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+  } else {
+    map.setView([ABIDJAN_CENTER.lat, ABIDJAN_CENTER.lng], 12);
+  }
+}
+
+function mountGoogleTileLayer(
+  L: typeof LType,
+  map: LType.Map,
+  style: TileMapStyle,
+  tileLayerRef: MutableRefObject<LType.TileLayer | null>,
+  mapRef: MutableRefObject<LType.Map | null>,
+) {
+  if (tileLayerRef.current) {
+    tileLayerRef.current.off();
+    map.removeLayer(tileLayerRef.current);
+    tileLayerRef.current = null;
+  }
+
+  const tileUrl =
+    style === "hybrid"
+      ? "https://mt{s}.google.com/vt/lyrs=y&hl=fr&x={x}&y={y}&z={z}"
+      : "https://mt{s}.google.com/vt/lyrs=m&hl=fr&x={x}&y={y}&z={z}";
+
+  const googleLayer = L.tileLayer(tileUrl, {
+    subdomains: ["0", "1", "2", "3"],
+    maxZoom: 20,
+    attribution: "© Google Maps",
+  });
+
+  let failedTiles = 0;
+  let fellBack = false;
+
+  googleLayer.on("tileerror", () => {
+    if (fellBack || tileLayerRef.current !== googleLayer) return;
+    failedTiles += 1;
+    if (failedTiles >= 4 && mapRef.current) {
+      fellBack = true;
+      googleLayer.off();
+      mapRef.current.removeLayer(googleLayer);
+      const osmFallback = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution: "&copy; OpenStreetMap",
+          maxZoom: 19,
+        },
+      ).addTo(mapRef.current);
+      tileLayerRef.current = osmFallback;
+    }
+  });
+
+  googleLayer.addTo(map);
+  tileLayerRef.current = googleLayer;
+}
+
+function GoogleMapsControlBar({
+  mapStyle,
+  onChangeStyle,
+  externalGoogleMapsUrl,
+}: {
+  mapStyle: MapStyle;
+  onChangeStyle: (style: MapStyle) => void;
+  externalGoogleMapsUrl: string;
+}) {
+  return (
+    <div className="absolute right-3 top-3 z-[400] flex max-w-[calc(100%-52px)] flex-wrap items-center justify-end gap-1.5">
+      <div
+        role="group"
+        aria-label="Mode d'affichage Google Maps"
+        className="inline-flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-soft backdrop-blur"
+      >
+        <button
+          type="button"
+          onClick={() => onChangeStyle("roadmap")}
+          aria-pressed={mapStyle === "roadmap"}
+          className={cn(
+            "rounded-lg px-2.5 py-1.5 text-xs font-bold leading-none transition",
+            mapStyle === "roadmap"
+              ? "bg-brand-700 text-white shadow-sm"
+              : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+          )}
+        >
+          Plan
+        </button>
+        <button
+          type="button"
+          onClick={() => onChangeStyle("hybrid")}
+          aria-pressed={mapStyle === "hybrid"}
+          className={cn(
+            "rounded-lg px-2.5 py-1.5 text-xs font-bold leading-none transition",
+            mapStyle === "hybrid"
+              ? "bg-brand-700 text-white shadow-sm"
+              : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+          )}
+        >
+          Satellite
+        </button>
+        <button
+          type="button"
+          onClick={() => onChangeStyle("embed")}
+          aria-pressed={mapStyle === "embed"}
+          className={cn(
+            "rounded-lg px-2.5 py-1.5 text-xs font-bold leading-none transition",
+            mapStyle === "embed"
+              ? "bg-brand-700 text-white shadow-sm"
+              : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+          )}
+        >
+          Google Maps
+        </button>
+      </div>
+
+      <a
+        href={externalGoogleMapsUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/95 px-2.5 py-2 text-xs font-bold leading-none text-brand-700 shadow-soft backdrop-blur transition hover:bg-white hover:text-brand-800"
+      >
+        Ouvrir ↗
+      </a>
+    </div>
+  );
+}
+
 export default function PharmacyMap({
   markers,
   userLocation,
@@ -179,10 +310,14 @@ export default function PharmacyMap({
   onSelectPharmacy,
   className,
 }: PharmacyMapProps) {
+  const [mapStyle, setMapStyle] = useState<MapStyle>("roadmap");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LType.Map | null>(null);
+  const tileLayerRef = useRef<LType.TileLayer | null>(null);
+  const appliedTileStyleRef = useRef<TileMapStyle | null>(null);
   const layerRef = useRef<LType.LayerGroup | null>(null);
   const leafletRef = useRef<typeof LType | null>(null);
+  const boundsRef = useRef<LType.LatLngTuple[]>([]);
   const markerMapRef = useRef<
     Map<string, { marker: LType.Marker; entry: PharmacyMapMarker }>
   >(new Map());
@@ -191,12 +326,45 @@ export default function PharmacyMap({
   const activeIdRef = useRef(activePharmacyId);
   activeIdRef.current = activePharmacyId;
   const prevActiveIdRef = useRef<string | null>(activePharmacyId);
+  const mapStyleRef = useRef<MapStyle>(mapStyle);
+  mapStyleRef.current = mapStyle;
+  const prevMapStyleRef = useRef<MapStyle>(mapStyle);
+
+  const activeMarker = useMemo(
+    () =>
+      activePharmacyId
+        ? markers.find((entry) => entry.pharmacy.id === activePharmacyId) ?? null
+        : null,
+    [activePharmacyId, markers],
+  );
+
+  const embedUrl = useMemo(() => {
+    if (
+      activeMarker &&
+      Number.isFinite(activeMarker.pharmacy.latitude) &&
+      Number.isFinite(activeMarker.pharmacy.longitude) &&
+      (activeMarker.pharmacy.latitude !== 0 || activeMarker.pharmacy.longitude !== 0)
+    ) {
+      const { latitude, longitude, name } = activeMarker.pharmacy;
+      return `https://maps.google.com/maps?q=${latitude},${longitude}+(${encodeURIComponent(name)})&hl=fr&z=16&output=embed`;
+    }
+    return "https://maps.google.com/maps?q=5.3484,-4.0124&hl=fr&z=12&output=embed";
+  }, [activeMarker]);
+
+  const externalGoogleMapsUrl = useMemo(() => {
+    if (activeMarker) {
+      return mapsDirectionsLink(activeMarker.pharmacy, userLocation);
+    }
+    return "https://www.google.com/maps/search/?api=1&query=5.3484,-4.0124";
+  }, [activeMarker, userLocation]);
 
   useEffect(() => {
     const node = containerRef.current;
     if (!node || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      mapRef.current?.invalidateSize({ animate: false });
+      if (mapStyleRef.current !== "embed") {
+        mapRef.current?.invalidateSize({ animate: false });
+      }
     });
     observer.observe(node);
     return () => observer.disconnect();
@@ -218,16 +386,16 @@ export default function PharmacyMap({
           scrollWheelZoom: false,
         });
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap",
-          maxZoom: 19,
-        }).addTo(map);
+        const initialTileStyle: TileMapStyle =
+          mapStyleRef.current === "hybrid" ? "hybrid" : "roadmap";
+        mountGoogleTileLayer(L, map, initialTileStyle, tileLayerRef, mapRef);
+        appliedTileStyleRef.current = initialTileStyle;
 
         layerRef.current = L.layerGroup().addTo(map);
         mapRef.current = map;
 
         requestAnimationFrame(() => {
-          if (!cancelled) {
+          if (!cancelled && mapStyleRef.current !== "embed") {
             map.invalidateSize({ animate: false });
           }
         });
@@ -275,12 +443,9 @@ export default function PharmacyMap({
         bounds.push([pharmacy.latitude, pharmacy.longitude]);
       }
 
-      if (bounds.length === 1) {
-        map.setView(bounds[0], 14);
-      } else if (bounds.length > 1) {
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      } else {
-        map.setView([ABIDJAN_CENTER.lat, ABIDJAN_CENTER.lng], 12);
+      boundsRef.current = bounds;
+      if (mapStyleRef.current !== "embed") {
+        applyMapBounds(map, bounds);
       }
       prevActiveIdRef.current = activeIdRef.current;
     }
@@ -291,6 +456,30 @@ export default function PharmacyMap({
       cancelled = true;
     };
   }, [markers, userLocation]);
+
+  useEffect(() => {
+    const prevStyle = prevMapStyleRef.current;
+    prevMapStyleRef.current = mapStyle;
+
+    if (mapStyle === "embed") return;
+
+    const L = leafletRef.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+
+    if (appliedTileStyleRef.current !== mapStyle) {
+      mountGoogleTileLayer(L, map, mapStyle, tileLayerRef, mapRef);
+      appliedTileStyleRef.current = mapStyle;
+    }
+
+    if (prevStyle === "embed") {
+      requestAnimationFrame(() => {
+        if (!mapRef.current || mapStyleRef.current === "embed") return;
+        mapRef.current.invalidateSize({ animate: false });
+        applyMapBounds(mapRef.current, boundsRef.current);
+      });
+    }
+  }, [mapStyle]);
 
   useEffect(() => {
     const L = leafletRef.current;
@@ -319,6 +508,9 @@ export default function PharmacyMap({
     const markerMap = markerMapRef.current;
     return () => {
       markerMap.clear();
+      tileLayerRef.current?.off();
+      tileLayerRef.current = null;
+      appliedTileStyleRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -332,9 +524,29 @@ export default function PharmacyMap({
         <div
           ref={containerRef}
           aria-label="Carte des pharmacies à Abidjan"
-          className="h-full min-h-[420px] w-full overflow-hidden rounded-2xl bg-slate-100"
+          className={cn(
+            "h-full min-h-[420px] w-full overflow-hidden rounded-2xl bg-slate-100",
+            mapStyle === "embed" && "hidden",
+          )}
         />
-        <MapLegend floating showUserLocation={Boolean(userLocation)} />
+        {mapStyle === "embed" ? (
+          <iframe
+            title="Carte Google Maps Abidjan"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src={embedUrl}
+            className="h-full min-h-[420px] w-full rounded-2xl border-0"
+            allowFullScreen
+          />
+        ) : null}
+        <GoogleMapsControlBar
+          mapStyle={mapStyle}
+          onChangeStyle={setMapStyle}
+          externalGoogleMapsUrl={externalGoogleMapsUrl}
+        />
+        {mapStyle !== "embed" ? (
+          <MapLegend floating showUserLocation={Boolean(userLocation)} />
+        ) : null}
       </div>
     );
   }
@@ -342,13 +554,32 @@ export default function PharmacyMap({
   return (
     <div className="isolate space-y-2">
       <div
-        ref={containerRef}
-        aria-label="Carte des pharmacies à Abidjan"
         className={cn(
-          "h-[360px] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-card",
+          "relative h-[360px] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-card",
           className,
         )}
-      />
+      >
+        <div
+          ref={containerRef}
+          aria-label="Carte des pharmacies à Abidjan"
+          className={cn("h-full w-full", mapStyle === "embed" && "hidden")}
+        />
+        {mapStyle === "embed" ? (
+          <iframe
+            title="Carte Google Maps Abidjan"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src={embedUrl}
+            className="h-full min-h-[420px] w-full rounded-2xl border-0"
+            allowFullScreen
+          />
+        ) : null}
+        <GoogleMapsControlBar
+          mapStyle={mapStyle}
+          onChangeStyle={setMapStyle}
+          externalGoogleMapsUrl={externalGoogleMapsUrl}
+        />
+      </div>
       <MapLegend floating={false} showUserLocation={Boolean(userLocation)} />
     </div>
   );

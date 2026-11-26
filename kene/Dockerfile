@@ -12,7 +12,8 @@ COPY . .
 RUN cp prisma/schema.postgres.prisma prisma/schema.prisma
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_ENABLE_HOSPITALS=false
-ENV NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=true
+ENV NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=false
+ENV KENE_ALLOW_DEMO_RESET=false
 RUN ./node_modules/.bin/prisma generate && npm run build
 RUN node -e "const fs=require('fs'); const p=fs.readFileSync('.next/server/app/page.js','utf8'); if (!p || p.length < 200) { console.error('ERROR: root / did NOT compile!', p.slice(0,1200)); process.exit(1); }"
 
@@ -20,6 +21,8 @@ FROM base AS runner
 LABEL org.opencontainers.image.source="https://github.com/expressog-commits/kene"
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=false
+ENV KENE_ALLOW_DEMO_RESET=false
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=builder /srv/kene/package.json ./package.json

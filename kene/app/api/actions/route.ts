@@ -114,8 +114,8 @@ export async function POST(request: Request) {
   const action = text(body.action, 40);
 
   if (action === "resetDemo") {
-    if (process.env.KENE_DISABLE_DEMO_RESET === "true") {
-      return jsonError("La réinitialisation de la démo est désactivée.", 403);
+    if (process.env.KENE_ALLOW_DEMO_RESET !== "true") {
+      return jsonError("La réinitialisation est désactivée en production.", 403);
     }
     const resetLimit = rateLimit(
       clientKey(request, "reset-demo"),

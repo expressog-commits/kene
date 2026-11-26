@@ -20,6 +20,7 @@ import {
 import { parseStockCsv, STOCK_CSV_TEMPLATE } from "@/lib/csv";
 import { CATEGORIES, LEVEL_META, openingLabel, pharmacyOverview, stockLevel } from "@/lib/engine";
 import { timeAgo } from "@/lib/format";
+import { mapsDirectionsLink } from "@/lib/geo";
 import type { BulkImportSummary } from "@/lib/types";
 
 type PharmacyTab = "stock" | "add" | "profile";
@@ -254,7 +255,17 @@ export default function PharmacyView() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate font-display text-lg font-bold text-slate-900 sm:text-xl">{pharmacy.name}</h1>
-            <p className="mt-0.5 text-sm text-slate-600">{pharmacy.quartier} · {openingLabel(pharmacy)}</p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-slate-600">
+              <span>{pharmacy.quartier} · {openingLabel(pharmacy)}</span>
+              <a
+                href={mapsDirectionsLink(pharmacy, null)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center font-semibold text-brand-700 transition hover:text-brand-800 hover:underline"
+              >
+                Voir sur Google Maps ↗
+              </a>
+            </div>
           </div>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
             <IconClock className="h-3.5 w-3.5 text-slate-500" />

@@ -23,11 +23,11 @@ export default function OfflinePage() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="btn-primary text-xs"
+            className="btn-primary min-h-[48px] text-xs"
           >
             Réessayer
           </button>
-          <Link href="/app" className="btn-secondary text-xs">
+          <Link href="/" className="btn-secondary min-h-[48px] text-xs">
             Ouvrir l&apos;app (cache)
           </Link>
         </div>
@@ -35,7 +35,7 @@ export default function OfflinePage() {
         <div className="mt-6 border-t border-slate-100 pt-5">
           <a
             href="tel:185"
-            className="btn w-full bg-red-600 px-4 py-2.5 text-xs text-white hover:bg-red-700"
+            className="btn min-h-[48px] w-full bg-red-600 px-4 py-2.5 text-xs text-white hover:bg-red-700"
           >
             <IconPhone className="h-4 w-4" />
             Urgence vitale : appeler le SAMU 185

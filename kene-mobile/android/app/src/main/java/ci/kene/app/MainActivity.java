@@ -52,6 +52,9 @@ public class MainActivity extends BridgeActivity {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            if (request != null && !request.isForMainFrame()) {
+                return false;
+            }
             Uri uri = request != null ? request.getUrl() : null;
             if (handleExternalUri(uri)) {
                 return true;
@@ -85,6 +88,9 @@ public class MainActivity extends BridgeActivity {
 
     private static boolean shouldOpenExternally(Uri uri) {
         if (uri == null) {
+            return false;
+        }
+        if (uri.isHierarchical() && "embed".equalsIgnoreCase(uri.getQueryParameter("output"))) {
             return false;
         }
         String scheme = uri.getScheme();

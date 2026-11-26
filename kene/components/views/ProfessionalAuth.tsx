@@ -14,7 +14,10 @@ import {
   IconPharmacy,
 } from "../icons";
 import { FEATURES } from "@/lib/features";
+import { COMMUNE_COORDS } from "@/lib/geo";
 import type { ProfessionalType } from "@/lib/types";
+
+const ABIDJAN_COMMUNES = Object.keys(COMMUNE_COORDS);
 
 type Mode = "login" | "signup" | "recover";
 type EstablishmentType = "pharmacy" | "hospital";
@@ -71,7 +74,7 @@ export default function ProfessionalAuth({
   const [role, setRole] = useState("");
   const [existingId, setExistingId] = useState("");
   const [name, setName] = useState("");
-  const [quartier, setQuartier] = useState("");
+  const [quartier, setQuartier] = useState("Cocody");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -87,11 +90,13 @@ export default function ProfessionalAuth({
     ? ["pharmacy", "hospital"]
     : ["pharmacy"];
 
-  const visibleDemoAccounts = demoAccounts.filter(
-    (account) =>
-      account.type !== "admin" &&
-      (FEATURES.hospitals || account.type !== "hospital"),
-  );
+  const visibleDemoAccounts = FEATURES.showDemoAccounts
+    ? demoAccounts.filter(
+        (account) =>
+          account.type !== "admin" &&
+          (FEATURES.hospitals || account.type !== "hospital"),
+      )
+    : [];
 
   const claimed = new Set(claimedEstablishmentIds);
   const availableEstablishments =
@@ -518,13 +523,18 @@ export default function ProfessionalAuth({
                       <label className={DARK_LABEL} htmlFor="signup-quartier">
                         Quartier / commune
                       </label>
-                      <input
+                      <select
                         id="signup-quartier"
                         className={DARK_INPUT}
-                        placeholder="Cocody"
                         value={quartier}
                         onChange={(event) => setQuartier(event.target.value)}
-                      />
+                      >
+                        {ABIDJAN_COMMUNES.map((commune) => (
+                          <option key={commune} value={commune}>
+                            {commune}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className={DARK_LABEL} htmlFor="signup-phone">
@@ -667,7 +677,7 @@ export default function ProfessionalAuth({
                     type="email"
                     autoComplete="username"
                     className={DARK_INPUT}
-                    placeholder="officine.rondpoint@kene.ci"
+                    placeholder="contact@monofficine.ci"
                     value={recoverEmail}
                     onChange={(event) => {
                       setRecoverEmail(event.target.value);
