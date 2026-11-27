@@ -4,7 +4,11 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { cn } from "../ui";
 import PharmacyMap, { type PharmacyMapMarker } from "../PharmacyMap";
+import PrescriptionPhotoPanel, {
+  type PrescriptionPhotoData,
+} from "../PrescriptionPhotoPanel";
 import {
+  IconCamera,
   IconCheck,
   IconChevronRight,
   IconClock,
@@ -258,6 +262,7 @@ function PharmacyRowActions({
   primaryDirections = true,
   waText,
   shareDetail,
+  prescriptionFile,
   onNotify,
   timestampText,
 }: {
@@ -266,6 +271,7 @@ function PharmacyRowActions({
   primaryDirections?: boolean;
   waText: string;
   shareDetail?: string;
+  prescriptionFile?: File | null;
   onNotify: (message: string) => void;
   timestampText: string;
 }) {
@@ -279,10 +285,21 @@ function PharmacyRowActions({
 
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
-        await navigator.share({
-          title: `${pharmacy.name} · Kéné`,
-          text: summary,
-        });
+        if (
+          prescriptionFile &&
+          navigator.canShare?.({ files: [prescriptionFile] })
+        ) {
+          await navigator.share({
+            title: `${pharmacy.name} · Kéné`,
+            text: summary,
+            files: [prescriptionFile],
+          });
+        } else {
+          await navigator.share({
+            title: `${pharmacy.name} · Kéné`,
+            text: summary,
+          });
+        }
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
@@ -294,7 +311,11 @@ function PharmacyRowActions({
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(summary);
-        onNotify("Infos pharmacie copiées !");
+        onNotify(
+          prescriptionFile
+            ? "Infos pharmacie copiées (joignez la photo si besoin)."
+            : "Infos pharmacie copiées !",
+        );
       } else {
         onNotify("Partage indisponible sur ce navigateur.");
       }
@@ -341,11 +362,15 @@ function PharmacyRowActions({
       <button
         type="button"
         onClick={(event) => void handleShare(event)}
-        aria-label={`Partager ${pharmacy.name}`}
+        aria-label={
+          prescriptionFile
+            ? `Joindre l'ordonnance pour ${pharmacy.name}`
+            : `Partager ${pharmacy.name}`
+        }
         className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-[0.98] sm:h-11 sm:min-h-[44px] sm:bg-white sm:text-[13px]"
       >
         <IconShare className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-        Partager
+        {prescriptionFile ? "Joindre ordonnance" : "Partager"}
       </button>
       <span className="ml-auto text-[11px] text-slate-400">
         {timestampText}
@@ -409,6 +434,9 @@ export default function Search({
   const [query, setQuery] = useState("");
   const [listQuery, setListQuery] = useState("");
   const [selectedMedicineIds, setSelectedMedicineIds] = useState<string[]>([]);
+  const [prescriptionPhoto, setPrescriptionPhoto] =
+    useState<PrescriptionPhotoData | null>(null);
+  const [cameraTrigger, setCameraTrigger] = useState(0);
   const [expandedPharmacyIds, setExpandedPharmacyIds] = useState<string[]>([]);
   const [hoveredPharmacyId, setHoveredPharmacyId] = useState<string | null>(null);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState<string | null>(null);
@@ -416,10 +444,15 @@ export default function Search({
   const [showInstallPanel, setShowInstallPanel] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const modeRef = useRef<SearchMode>(mode);
+  const selectedMedicineIdsRef = useRef<string[]>(selectedMedicineIds);
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    selectedMedicineIdsRef.current = selectedMedicineIds;
+  }, [selectedMedicineIds]);
 
   useEffect(() => {
     return () => {
@@ -846,6 +879,55 @@ export default function Search({
     );
   };
 
+  const addMedicinesBatch = (ids: string[]) => {
+    const validIds = new Set(state.medicines.map((item) => item.id));
+    const current = selectedMedicineIdsRef.current;
+    const seen = new Set(current);
+    const toAdd: string[] = [];
+    let alreadyCount = 0;
+    let skippedOverLimit = 0;
+
+    for (const id of ids) {
+      if (!validIds.has(id)) continue;
+      if (seen.has(id)) {
+        alreadyCount += 1;
+        continue;
+      }
+      if (current.length + toAdd.length >= MAX_LIST_ITEMS) {
+        skippedOverLimit += 1;
+        continue;
+      }
+      seen.add(id);
+      toAdd.push(id);
+    }
+
+    if (toAdd.length > 0) {
+      const nextIds = [...current, ...toAdd];
+      selectedMedicineIdsRef.current = nextIds;
+      setSelectedMedicineIds(nextIds);
+      if (skippedOverLimit > 0) {
+        notify(
+          `${toAdd.length} médicament${toAdd.length > 1 ? "s" : ""} ajouté${toAdd.length > 1 ? "s" : ""} (limite de ${MAX_LIST_ITEMS} atteinte).`,
+        );
+      } else {
+        notify(
+          `${toAdd.length} médicament${toAdd.length > 1 ? "s" : ""} ajouté${toAdd.length > 1 ? "s" : ""} à votre ordonnance (${nextIds.length}/${MAX_LIST_ITEMS}).`,
+        );
+      }
+      return;
+    }
+
+    if (current.length >= MAX_LIST_ITEMS && skippedOverLimit > 0) {
+      notify(`Maximum ${MAX_LIST_ITEMS} médicaments par ordonnance.`);
+    } else if (alreadyCount > 0) {
+      notify(
+        alreadyCount > 1
+          ? "Ces médicaments sont déjà dans votre ordonnance."
+          : "Ce médicament est déjà dans votre ordonnance.",
+      );
+    }
+  };
+
   const removeMedicineFromList = (medicineId: string) => {
     setSelectedMedicineIds((previous) => previous.filter((id) => id !== medicineId));
   };
@@ -1017,7 +1099,7 @@ export default function Search({
                       if (query.trim().length >= 2) addRecentSearch(query);
                     }}
                     placeholder="Nom du médicament…"
-                    className="min-w-0 flex-1 bg-transparent px-1.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none sm:text-base [&::-webkit-search-cancel-button]:hidden"
                   />
                   {query ? (
                     <button
@@ -1034,6 +1116,18 @@ export default function Search({
                   ) : null}
                   <button
                     type="button"
+                    onClick={() => {
+                      setMode("list");
+                      setCameraTrigger((value) => value + 1);
+                    }}
+                    aria-label="Prendre en photo une ordonnance"
+                    title="Scanner une ordonnance en photo"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition hover:bg-brand-100 active:scale-95 sm:h-11 sm:w-11"
+                  >
+                    <IconCamera className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleVoiceSearch}
                     aria-label="Rechercher à la voix"
                     aria-pressed={listening}
@@ -1043,7 +1137,7 @@ export default function Search({
                         : "Rechercher à la voix"
                     }
                     className={cn(
-                      "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-95",
+                      "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition active:scale-95 sm:h-11 sm:w-11",
                       listening
                         ? "animate-pulse bg-rose-100 text-rose-600 ring-2 ring-rose-300"
                         : "bg-brand-50 text-brand-700 hover:bg-brand-100",
@@ -1076,7 +1170,7 @@ export default function Search({
                       }
                     }}
                     placeholder="Ajouter un médicament…"
-                    className="min-w-0 flex-1 bg-transparent px-1.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                    className="min-w-0 flex-1 bg-transparent px-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none sm:text-base [&::-webkit-search-cancel-button]:hidden"
                   />
                   {listQuery ? (
                     <button
@@ -1093,6 +1187,18 @@ export default function Search({
                   ) : null}
                   <button
                     type="button"
+                    onClick={() => {
+                      setMode("list");
+                      setCameraTrigger((value) => value + 1);
+                    }}
+                    aria-label="Prendre en photo une ordonnance"
+                    title="Scanner une ordonnance en photo"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition hover:bg-brand-100 active:scale-95 sm:h-11 sm:w-11"
+                  >
+                    <IconCamera className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleVoiceSearch}
                     aria-label="Rechercher à la voix"
                     aria-pressed={listening}
@@ -1102,7 +1208,7 @@ export default function Search({
                         : "Rechercher à la voix"
                     }
                     className={cn(
-                      "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-95",
+                      "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition active:scale-95 sm:h-11 sm:w-11",
                       listening
                         ? "animate-pulse bg-rose-100 text-rose-600 ring-2 ring-rose-300"
                         : "bg-brand-50 text-brand-700 hover:bg-brand-100",
@@ -1134,6 +1240,7 @@ export default function Search({
                   <button
                     type="button"
                     onClick={() => {
+                      setCameraTrigger(0);
                       setMode("single");
                       requestAnimationFrame(() => inputRef.current?.focus());
                     }}
@@ -1233,9 +1340,11 @@ export default function Search({
                 type="button"
                 onClick={() => {
                   if (mode === "single") {
+                    setCameraTrigger(0);
                     setMode("list");
                     requestAnimationFrame(() => listInputRef.current?.focus());
                   } else {
+                    setCameraTrigger(0);
                     setMode("single");
                   }
                 }}
@@ -1450,6 +1559,15 @@ export default function Search({
               ) : null
             ) : (
               <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                <PrescriptionPhotoPanel
+                  medicinesState={state}
+                  selectedMedicineIds={selectedMedicineIds}
+                  photo={prescriptionPhoto}
+                  autoOpenCameraTrigger={cameraTrigger}
+                  onPhotoChange={setPrescriptionPhoto}
+                  onAddMedicines={addMedicinesBatch}
+                  onNotify={notify}
+                />
                 {selectedMedicines.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     {selectedMedicines.map((medicine) => (
@@ -1707,6 +1825,7 @@ export default function Search({
                                 ? `Ordonnance ${availableCount}/${totalRequested} dispo (${fcfa(result.estimatedTotal)})`
                                 : undefined
                             }
+                            prescriptionFile={prescriptionPhoto?.file ?? null}
                             onNotify={notify}
                             timestampText={
                               result.latestUpdate

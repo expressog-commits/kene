@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   dutyPharmacies,
+  matchMedicinesFromText,
   popularMedicines,
   priceRange,
   publicPharmacies,
@@ -132,4 +133,51 @@ test("priceRange et popularMedicines ignorent les officines non vérifiées", ()
 
   const popular = popularMedicines(state, 5);
   assert.equal(popular.length, 5);
+});
+
+test("matchMedicinesFromText reconnaît une ordonnance multi-lignes avec marques ivoiriennes", () => {
+  const state = seedState();
+  const text = [
+    "1. DOLIPRANE 500 mg - 1 cp matin midi soir",
+    "2. CLAMOXYL 500 - 1 gelule x2/j",
+    "3. COARTEM 20/120",
+    "4. SPASFON 80 mg",
+  ].join("\n");
+
+  const matched = matchMedicinesFromText(state, text);
+  assert.deepEqual(
+    matched.map((medicine) => medicine.id),
+    ["med_paracetamol", "med_amoxicilline", "med_act", "med_phloroglucinol"],
+  );
+});
+
+test("matchMedicinesFromText privilégie le paracétamol pédiatrique quand un marqueur sirop/enfant est présent", () => {
+  const state = seedState();
+  const matched = matchMedicinesFromText(
+    state,
+    "Doliprane sirop enfant 1 flacon\nOrasel SRO 3 sachets",
+  );
+  const ids = matched.map((medicine) => medicine.id);
+
+  assert.ok(ids.includes("med_paracetamol_siro"));
+  assert.ok(ids.includes("med_sro"));
+  assert.equal(ids.includes("med_paracetamol"), false);
+});
+
+test("matchMedicinesFromText tolère les fautes OCR et ignore un texte hors-sujet", () => {
+  const state = seedState();
+  const matched = matchMedicinesFromText(
+    state,
+    "D0LIPRANE 500mg\nVENT0LINE inhalateur\nMOPRAL 20mg",
+  );
+  assert.deepEqual(
+    matched.map((medicine) => medicine.id),
+    ["med_paracetamol", "med_salbutamol", "med_omeprazole"],
+  );
+
+  const unrelated = matchMedicinesFromText(
+    state,
+    "Cabinet Médical Cocody - Dr Kouassi - Repos 3 jours",
+  );
+  assert.deepEqual(unrelated, []);
 });

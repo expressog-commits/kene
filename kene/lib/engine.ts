@@ -621,3 +621,239 @@ export function emergencySummary(state: AppState): {
   }
   return { available, total, centers };
 }
+
+const OCR_STOPWORDS = new Set([
+  "boite",
+  "boites",
+  "comprime",
+  "comprimes",
+  "cp",
+  "gelule",
+  "gelules",
+  "gel",
+  "flacon",
+  "sachet",
+  "sachets",
+  "dosette",
+  "dosettes",
+  "inhalateur",
+  "test",
+  "unitaire",
+  "mg",
+  "ml",
+  "ug",
+  "matin",
+  "midi",
+  "soir",
+  "nuit",
+  "jour",
+  "jours",
+  "semaine",
+  "pendant",
+  "prendre",
+  "prise",
+  "prises",
+  "avant",
+  "apres",
+  "repas",
+  "ordonnance",
+  "docteur",
+  "clinique",
+  "chu",
+  "hopital",
+  "patient",
+  "abidjan",
+  "adulte",
+  "acide",
+  "serum",
+  "sels",
+  "orale",
+]);
+
+const DISTINCTIVE_PHRASES = [
+  "acide folique",
+  "acide ascorbique",
+  "serum physiologique",
+  "sels de rehydratation",
+] as const;
+
+const PEDIATRIC_MARKERS_RE =
+  /\b(sirop|pediatrique|enfant|nourrisson|buvable|100\s*ml)\b/;
+
+function ocrNormalizeWord(word: string): string {
+  const norm = normalize(word);
+  const alphaMatches = norm.match(/[a-z]/g);
+  const alphaCount = alphaMatches ? alphaMatches.length : 0;
+  if (alphaCount >= 4 && !/^\d+$/.test(norm)) {
+    return norm.replace(/0/g, "o").replace(/1/g, "l");
+  }
+  return norm;
+}
+
+function levenshteinAtMostOne(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+
+  if (a.length === b.length) {
+    let diffs = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) {
+        diffs += 1;
+        if (diffs > 1) return false;
+      }
+    }
+    return diffs <= 1;
+  }
+
+  const [shorter, longer] = a.length < b.length ? [a, b] : [b, a];
+  let i = 0;
+  let j = 0;
+  let skipped = false;
+  while (i < shorter.length && j < longer.length) {
+    if (shorter[i] === longer[j]) {
+      i += 1;
+      j += 1;
+    } else if (skipped) {
+      return false;
+    } else {
+      skipped = true;
+      j += 1;
+    }
+  }
+  return true;
+}
+
+function extractMedicineSignature(medicine: Medicine): {
+  keywords: string[];
+  phrases: string[];
+} {
+  const collapsed = normalize(`${medicine.name} ${medicine.dci}`)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const tokens = collapsed ? collapsed.split(" ") : [];
+
+  const keywordSet = new Set<string>();
+  for (const token of tokens) {
+    if (token === "sro" || token === "tdr") {
+      keywordSet.add(token);
+      continue;
+    }
+    if (
+      token.length >= 4 &&
+      !/^\d+$/.test(token) &&
+      !OCR_STOPWORDS.has(token)
+    ) {
+      keywordSet.add(token);
+    }
+  }
+
+  const phrases = DISTINCTIVE_PHRASES.filter((phrase) =>
+    collapsed.includes(phrase),
+  );
+
+  return { keywords: [...keywordSet], phrases };
+}
+
+export function matchMedicinesFromText(
+  state: AppState,
+  rawText: string,
+  limit = 8,
+): Medicine[] {
+  if (!rawText.trim() || limit <= 0) return [];
+
+  const signatures = state.medicines.map((medicine) => ({
+    medicine,
+    ...extractMedicineSignature(medicine),
+  }));
+
+  const lines = rawText.split(/\r?\n|[;•]+/);
+  const selected: Medicine[] = [];
+  const seenIds = new Set<string>();
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) continue;
+
+    const rawTokens = normalize(trimmed).match(/[a-z0-9]+/g) ?? [];
+    if (rawTokens.length === 0) continue;
+
+    const tokens = rawTokens.map(ocrNormalizeWord);
+    const normalizedLine = tokens.join(" ");
+    const hasPediatricMarker = PEDIATRIC_MARKERS_RE.test(normalizedLine);
+
+    const lineMatches: Array<{ medicine: Medicine; score: number }> = [];
+
+    for (const entry of signatures) {
+      let score = 0;
+      let hasFuzzyOrPhraseMatch = false;
+      const matchedKeywords = new Set<string>();
+
+      for (const phrase of entry.phrases) {
+        if (normalizedLine.includes(phrase)) {
+          score += 4;
+          hasFuzzyOrPhraseMatch = true;
+        }
+      }
+
+      for (const token of tokens) {
+        if (entry.keywords.includes(token)) {
+          score += 3;
+          matchedKeywords.add(token);
+        }
+      }
+
+      for (const token of tokens) {
+        if (token.length < 6) continue;
+        for (const keyword of entry.keywords) {
+          if (keyword.length < 6 || matchedKeywords.has(keyword)) continue;
+          if (levenshteinAtMostOne(token, keyword)) {
+            score += 2;
+            matchedKeywords.add(keyword);
+            hasFuzzyOrPhraseMatch = true;
+            break;
+          }
+        }
+      }
+
+      if (score > 0) {
+        if (entry.medicine.id === "med_paracetamol_siro") {
+          score += hasPediatricMarker ? 3 : -2;
+        } else if (entry.medicine.id === "med_paracetamol") {
+          score += hasPediatricMarker ? -2 : 1;
+        }
+      }
+
+      const threshold = hasFuzzyOrPhraseMatch ? 2 : 3;
+      if (score >= threshold) {
+        lineMatches.push({ medicine: entry.medicine, score });
+      }
+    }
+
+    const adultIdx = lineMatches.findIndex(
+      (item) => item.medicine.id === "med_paracetamol",
+    );
+    const siroIdx = lineMatches.findIndex(
+      (item) => item.medicine.id === "med_paracetamol_siro",
+    );
+    if (adultIdx !== -1 && siroIdx !== -1) {
+      if (lineMatches[adultIdx].score >= lineMatches[siroIdx].score) {
+        lineMatches.splice(siroIdx, 1);
+      } else {
+        lineMatches.splice(adultIdx, 1);
+      }
+    }
+
+    lineMatches.sort((a, b) => b.score - a.score);
+
+    for (const { medicine } of lineMatches) {
+      if (seenIds.has(medicine.id)) continue;
+      seenIds.add(medicine.id);
+      selected.push(medicine);
+      if (selected.length >= limit) {
+        return selected;
+      }
+    }
+  }
+
+  return selected;
+}

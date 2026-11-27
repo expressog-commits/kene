@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://*.google.com https://*.gstatic.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://*.google.com https://*.gstatic.com https://cdn.jsdelivr.net",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.google.com https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com",
+  "connect-src 'self' data: blob: https://*.googleapis.com https://*.google.com https://*.gstatic.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com",
   "frame-src 'self' https://www.google.com https://maps.google.com",
-  "worker-src 'self'",
+  "worker-src 'self' blob: https://cdn.jsdelivr.net",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -28,7 +28,7 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(self), geolocation=(self)",
+            value: "camera=(self), microphone=(self), geolocation=(self)",
           },
           {
             key: "Content-Security-Policy",

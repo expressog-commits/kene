@@ -268,6 +268,35 @@ export const IconSmartphone = (p: IconProps) => (
   </svg>
 );
 
+export const IconCamera = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M4 8.5A2 2 0 0 1 6 6.5h2.2l1.3-2h5l1.3 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+    <circle cx="12" cy="12.8" r="3.2" />
+  </svg>
+);
+
+export const IconImage = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <circle cx="8.5" cy="9.5" r="1.5" />
+    <path d="m4.5 17 4.8-4.8a1.2 1.2 0 0 1 1.7 0l2.4 2.4 2.1-2.1a1.2 1.2 0 0 1 1.7 0L20 15.5" />
+  </svg>
+);
+
+export const IconRotate = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M20 4v5h-5" />
+    <path d="M20 9a8 8 0 1 0 2 5.3" />
+  </svg>
+);
+
+export const IconZoomIn = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m15.5 15.5 5 5M10.5 7.5v6M7.5 10.5h6" />
+  </svg>
+);
+
 export const IconLogo = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 32 32"

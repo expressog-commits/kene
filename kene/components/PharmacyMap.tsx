@@ -192,7 +192,7 @@ function mountGoogleTileLayer(
   mapRef: MutableRefObject<LType.Map | null>,
 ) {
   if (tileLayerRef.current) {
-    tileLayerRef.current.off();
+    tileLayerRef.current.off("tileerror");
     map.removeLayer(tileLayerRef.current);
     tileLayerRef.current = null;
   }
@@ -216,7 +216,7 @@ function mountGoogleTileLayer(
     failedTiles += 1;
     if (failedTiles >= 4 && mapRef.current) {
       fellBack = true;
-      googleLayer.off();
+      googleLayer.off("tileerror");
       mapRef.current.removeLayer(googleLayer);
       const osmFallback = L.tileLayer(
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -472,13 +472,28 @@ export default function PharmacyMap({
       appliedTileStyleRef.current = mapStyle;
     }
 
+    let cancelled = false;
     if (prevStyle === "embed") {
       requestAnimationFrame(() => {
-        if (!mapRef.current || mapStyleRef.current === "embed") return;
-        mapRef.current.invalidateSize({ animate: false });
-        applyMapBounds(mapRef.current, boundsRef.current);
+        if (cancelled || mapStyleRef.current === "embed") return;
+        const activeMap = mapRef.current;
+        if (!activeMap) return;
+        const container = activeMap.getContainer();
+        if (!container || !container.isConnected) return;
+        try {
+          activeMap.invalidateSize({ animate: false });
+          if (mapRef.current) {
+            applyMapBounds(mapRef.current, boundsRef.current);
+          }
+        } catch {
+          // Ignore if Leaflet map was torn down before frame ran.
+        }
       });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [mapStyle]);
 
   useEffect(() => {
@@ -508,7 +523,7 @@ export default function PharmacyMap({
     const markerMap = markerMapRef.current;
     return () => {
       markerMap.clear();
-      tileLayerRef.current?.off();
+      tileLayerRef.current?.off("tileerror");
       tileLayerRef.current = null;
       appliedTileStyleRef.current = null;
       mapRef.current?.remove();
@@ -526,7 +541,7 @@ export default function PharmacyMap({
           aria-label="Carte des pharmacies à Abidjan"
           className={cn(
             "h-full min-h-[420px] w-full overflow-hidden rounded-2xl bg-slate-100",
-            mapStyle === "embed" && "hidden",
+            mapStyle === "embed" && "invisible pointer-events-none",
           )}
         />
         {mapStyle === "embed" ? (
@@ -535,7 +550,7 @@ export default function PharmacyMap({
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             src={embedUrl}
-            className="h-full min-h-[420px] w-full rounded-2xl border-0"
+            className="absolute inset-0 z-[350] h-full w-full rounded-2xl border-0 bg-white"
             allowFullScreen
           />
         ) : null}
@@ -562,7 +577,10 @@ export default function PharmacyMap({
         <div
           ref={containerRef}
           aria-label="Carte des pharmacies à Abidjan"
-          className={cn("h-full w-full", mapStyle === "embed" && "hidden")}
+          className={cn(
+            "h-full w-full",
+            mapStyle === "embed" && "invisible pointer-events-none",
+          )}
         />
         {mapStyle === "embed" ? (
           <iframe
@@ -570,7 +588,7 @@ export default function PharmacyMap({
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             src={embedUrl}
-            className="h-full min-h-[420px] w-full rounded-2xl border-0"
+            className="absolute inset-0 z-[350] h-full w-full rounded-2xl border-0 bg-white"
             allowFullScreen
           />
         ) : null}
